@@ -4,13 +4,13 @@ from collections import Counter, defaultdict
 import config
 import utils
 
-# Configuration
-# DIRECTORIES, OUTPUT_CSV, OUTPUT_REPORT are now in config.py
 
-def analyze_directories(output_csv=config.DEFAULT_OUTPUT_CSV, output_report=config.DEFAULT_OUTPUT_REPORT):
+def analyze_directories(
+    output_csv=config.DEFAULT_OUTPUT_CSV, output_report=config.DEFAULT_OUTPUT_REPORT
+):
     all_files = []
     report_lines = []
-    
+
     report_lines.append("BÁO CÁO THỐNG KÊ DỮ LIỆU CHI TIẾT")
     report_lines.append("=" * 60)
 
@@ -34,24 +34,26 @@ def analyze_directories(output_csv=config.DEFAULT_OUTPUT_CSV, output_report=conf
                     file_list.append(f)
                     size = os.path.getsize(full_path)
                     sizes.append(size)
-                    
+
                     ext = os.path.splitext(f)[1].lower()
-                    
+
                     # Track non-PDFs (specifically for Dataset, but good general info)
-                    if category == "Dataset" and ext != '.pdf':
+                    if category == "Dataset" and ext != ".pdf":
                         non_pdf_files.append(f)
 
                     # Group by basename for duplicate check
                     basename = os.path.splitext(f)[0]
                     basename_map[basename].append(f)
 
-                    all_files.append({
-                        "Category": category,
-                        "FileName": f,
-                        "Extension": ext,
-                        "SizeBytes": size,
-                        "ReadableSize": utils.format_size(size)
-                    })
+                    all_files.append(
+                        {
+                            "Category": category,
+                            "FileName": f,
+                            "Extension": ext,
+                            "SizeBytes": size,
+                            "ReadableSize": utils.format_size(size),
+                        }
+                    )
         except Exception as e:
             print(f"Error reading {category}: {e}")
             continue
@@ -60,7 +62,7 @@ def analyze_directories(output_csv=config.DEFAULT_OUTPUT_CSV, output_report=conf
         total_count = len(file_list)
         extensions = [os.path.splitext(f)[1].lower() for f in file_list]
         type_counts = Counter(extensions)
-        
+
         report_lines.append(f"1. Số lượng & Định dạng:")
         report_lines.append(f"   - Tổng số file: {total_count}")
         for ext, count in type_counts.items():
@@ -75,11 +77,15 @@ def analyze_directories(output_csv=config.DEFAULT_OUTPUT_CSV, output_report=conf
             report_lines.append(f"   - Nhỏ nhất: {utils.format_size(min_size)}")
             report_lines.append(f"   - Lớn nhất: {utils.format_size(max_size)}")
             report_lines.append(f"   - Trung bình: {utils.format_size(avg_size)}")
-            report_lines.append(f"   - Khoảng kích thước: {utils.format_size(min_size)} - {utils.format_size(max_size)}")
+            report_lines.append(
+                f"   - Khoảng kích thước: {utils.format_size(min_size)} - {utils.format_size(max_size)}"
+            )
 
         # 3. Non-PDF Files (Dataset Only)
         if category == "Dataset":
-            report_lines.append(f"\n3. Danh sách file KHÔNG PHẢI PDF ({len(non_pdf_files)} file):")
+            report_lines.append(
+                f"\n3. Danh sách file KHÔNG PHẢI PDF ({len(non_pdf_files)} file):"
+            )
             if non_pdf_files:
                 for npf in non_pdf_files:
                     report_lines.append(f"   - {npf}")
@@ -88,7 +94,9 @@ def analyze_directories(output_csv=config.DEFAULT_OUTPUT_CSV, output_report=conf
 
         # 4. Duplicate Names (Same basename, different extensions)
         duplicates = {k: v for k, v in basename_map.items() if len(v) > 1}
-        report_lines.append(f"\n4. Các file trùng tên (khác đuôi mở rộng): {len(duplicates)} nhóm")
+        report_lines.append(
+            f"\n4. Các file trùng tên (khác đuôi mở rộng): {len(duplicates)} nhóm"
+        )
         if duplicates:
             for base, files in duplicates.items():
                 report_lines.append(f"   - {base}: {', '.join(files)}")
@@ -97,8 +105,14 @@ def analyze_directories(output_csv=config.DEFAULT_OUTPUT_CSV, output_report=conf
 
     # Write CSV
     try:
-        with open(output_csv, 'w', newline='', encoding='utf-8') as csvfile:
-            fieldnames = ['Category', 'FileName', 'Extension', 'SizeBytes', 'ReadableSize']
+        with open(output_csv, "w", newline="", encoding="utf-8") as csvfile:
+            fieldnames = [
+                "Category",
+                "FileName",
+                "Extension",
+                "SizeBytes",
+                "ReadableSize",
+            ]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
             for data in all_files:
@@ -109,11 +123,12 @@ def analyze_directories(output_csv=config.DEFAULT_OUTPUT_CSV, output_report=conf
 
     # Write Report
     try:
-        with open(output_report, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(report_lines))
+        with open(output_report, "w", encoding="utf-8") as f:
+            f.write("\n".join(report_lines))
         print(f"Summary report saved to {os.path.abspath(output_report)}")
     except Exception as e:
         print(f"Error writing Report: {e}")
+
 
 if __name__ == "__main__":
     analyze_directories()
