@@ -74,31 +74,59 @@ def is_numeric_match(value_str, text_content):
     """
     Check if a numeric value appears in text with different decimal formatting.
     Handles cases like JSON: 0.0 vs PDF Text: 0.00
+    Uses word boundary matching to ensure exact numeric matches.
+    Prioritizes matching formats with equal or higher precision than the original value.
 
     Returns: (is_match, matched_format) or (False, None)
     """
+    import re
+
     try:
         # Try to parse as a number
         num_value = float(value_str)
 
-        # Generate common decimal formats
-        # Handle both positive and negative numbers, with/without leading spaces
-        formats_to_try = [
-            f"{num_value:.0f}",  # 0, 10, 100
-            f"{num_value:.1f}",  # 0.0, 10.5, 100.0
-            f"{num_value:.2f}",  # 0.00, 10.50, 100.00
-            f"{num_value:.3f}",  # 0.000, 10.500, 100.000
-            f" {num_value:.2f}",  # With leading space (common in PDFs)
-            f" {num_value:.0f}",
-            f" {num_value:.1f}",
-        ]
+        # Determine the original precision of the value_str
+        original_precision = 0
+        if "." in value_str:
+            decimal_part = value_str.split(".")[-1]
+            original_precision = len(decimal_part)
 
-        # Also add the original string representation
-        formats_to_try.append(value_str)
+        formats_to_try = set()  # Use a set to avoid duplicates
 
-        # Search for any of these formats in the text
+        # Generate formats with equal or higher precision
+        # We'll check up to 3 decimal places beyond the original, or a max of 5 total
+        max_additional_precision = 3
+        max_total_precision = original_precision + max_additional_precision
+        if max_total_precision > 5:  # Cap total precision to avoid excessive checks
+            max_total_precision = 5
+
+        for p in range(original_precision, max_total_precision + 1):
+            formats_to_try.add(f"{num_value:.{p}f}")
+
+        # Also add the original string representation, as it might have specific formatting
+        # (e.g., "150.0" vs "150") or more precision than our generated ones.
+        formats_to_try.add(value_str)
+
+        # Add formats without trailing zeros if original had them (e.g., 150.40 -> 150.4)
+        # This is important if the text has less precision but is still a valid match.
+        # However, the instruction specifically says "equal or higher precision".
+        # So, we will only add lower precision formats if the original_precision is > 0
+        # and we want to allow matching "150.41" to "150.4" if the user meant it.
+        # For now, sticking to the instruction: "equal or higher precision".
+        # If original_precision is 0, we can still match 150 to 150.0, 150.00 etc.
+        # The loop `range(original_precision, ...)` already handles this.
+        # So, if original is "150.41", it will try "150.41", "150.410", "150.4100".
+        # It will NOT try "150.4" or "150".
+
+        # Search for any of these formats in the text with word boundaries
         for fmt in formats_to_try:
-            if fmt in text_content:
+            # Escape special regex characters (like .)
+            escaped_fmt = re.escape(fmt)
+            # Use word boundary \b to ensure we match complete numbers
+            # \b matches at positions where one side is a word character and the other is not
+            pattern = r"\b" + escaped_fmt + r"\b"
+
+            if re.search(pattern, text_content):
                 return True, fmt
 
         return False, None
@@ -242,19 +270,59 @@ def get_best_match(value, text_content, field_name=""):
     if val_normalized_dash.lower() in text_normalized_dash.lower():
         return "FOUND", 1.0, val_normalized_dash, ""
 
-    # 2.3. PERCENTAGE MATCHING: Handle "7%" vs "7 %" for specific fields
-    if "%" in val_str and field_name.lower() in PERCENTAGE_FIELDS:
-        # Try with space before % sign
-        val_with_space = val_str.replace("%", " %")
-        if val_with_space.lower() in text_lower:
+    # 2.3. PERCENTAGE MATCHING: Handle "7%" vs "7 %" and "8%" vs "8.00%"
+    # Check if field name contains any percentage-related keyword
+    is_percentage_field = any(
+        keyword in field_name.lower() for keyword in PERCENTAGE_FIELDS
+    )
+    if "%" in val_str and is_percentage_field:
+        import re
+
+        # Normalize percentage: strip trailing zeros (8.00% -> 8%)
+        def normalize_percentage(pct_str):
+            # Extract number part before %
+            match = re.match(r"^([\d.]+)%$", pct_str.strip())
+            if match:
+                num_str = match.group(1)
+                # Convert to float and back to remove trailing zeros
+                try:
+                    num = float(num_str)
+                    # Format without unnecessary decimals
+                    normalized_num = str(num).rstrip("0").rstrip(".")
+                    return normalized_num + "%"
+                except ValueError:
+                    return pct_str
+            return pct_str
+
+        # Normalize the JSON value
+        val_normalized = normalize_percentage(val_str)
+
+        # Also normalize all percentages in text for comparison
+        text_normalized_pct = text_content
+        for match in re.finditer(r"\b([\d.]+)\s*%", text_content):
+            original = match.group(0)
+            normalized = normalize_percentage(match.group(1) + "%")
+            # Replace with space variant
+            normalized_with_space = normalized.replace("%", " %")
+            text_normalized_pct = text_normalized_pct.replace(
+                original, normalized_with_space
+            )
+
+        # Try with space before % sign (e.g., "8%" -> "8 %")
+        val_with_space = val_normalized.replace("%", " %")
+        if val_with_space.lower() in text_normalized_pct.lower():
             return "FOUND", 1.0, val_with_space, ""
+
+        # Try without space (original normalized value)
+        if val_normalized.lower() in text_normalized_pct.lower():
+            return "FOUND", 1.0, val_normalized, ""
 
     # 2.5. NORMALIZED WHITESPACE MATCHING: Handle multi-line text from PDFs
     val_normalized = normalize_whitespace(val_str)
     text_normalized = normalize_whitespace(text_content)
 
     if val_normalized in text_normalized:
-        return "FOUND_NORMALIZED", 0.95, val_str, date_format if is_date_valid else ""
+        return "FOUND_NORMALIZED", 1.0, val_str, date_format if is_date_valid else ""
 
     # 3. DATE-SPECIFIC MATCHING: Only for date-related fields
     if is_date_valid and field_name.lower() in DATE_RELATED_FIELDS:

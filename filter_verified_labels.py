@@ -51,9 +51,9 @@ def filter_verified_labels():
                 accepted_statuses = [
                     "FOUND",
                     "FOUND_DATE_ALT_FORMAT",
+                    "FOUND_CASE_INSENSITIVE",
+                    "FOUND_NORMALIZED",
                     # "FOUND_NUMERIC_FORMAT",
-                    # "FOUND_CASE_INSENSITIVE",
-                    # "FOUND_NORMALIZED",
                 ]
 
                 if status in accepted_statuses:
