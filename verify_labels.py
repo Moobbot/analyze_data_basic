@@ -6,6 +6,18 @@ import shutil
 import config
 import utils
 
+# Fields that should use date-specific matching logic
+DATE_RELATED_FIELDS = [
+    "date",
+    "invoice date",
+    "due date",
+    "payment date",
+    "contract date",
+]
+
+# Fields that should use percentage normalization (handle "7%" vs "7 %")
+PERCENTAGE_FIELDS = ["tax type", "tax rate", "gst", "vat", "gst rate"]
+
 
 def flatten_json(y):
     out = {}
@@ -24,6 +36,38 @@ def flatten_json(y):
 
     flatten(y)
     return out
+
+
+def detect_date_format_from_text(text_content):
+    """
+    Detect date format (DD/MM or MM/DD) from text by finding dates with day > 12.
+
+    Args:
+        text_content: Text to analyze
+
+    Returns:
+        "DD/MM" if format is day-first, "MM/DD" if month-first, "UNKNOWN" if ambiguous
+    """
+    import re
+
+    # Find all dates in format d/d/yy or d/d/yyyy
+    date_pattern = r"\b(\d{1,2})/(\d{1,2})/(\d{2,4})\b"
+    matches = re.findall(date_pattern, text_content)
+
+    for first, second, year in matches:
+        first_num = int(first)
+        second_num = int(second)
+
+        # If first number > 12, must be DD/MM format
+        if first_num > 12:
+            return "DD/MM"
+
+        # If second number > 12, must be MM/DD format
+        if second_num > 12:
+            return "MM/DD"
+
+    # If no conclusive evidence, return unknown
+    return "UNKNOWN"
 
 
 def is_numeric_match(value_str, text_content):
@@ -63,10 +107,108 @@ def is_numeric_match(value_str, text_content):
         return False, None
 
 
-def get_best_match(value, text_content):
+def normalize_whitespace(text):
+    """
+    Normalize whitespace by replacing newlines and multiple spaces with single space.
+    Useful for comparing text that may be split across multiple lines in PDFs.
+    """
+    import re
+
+    # Replace newlines and tabs with space
+    text = text.replace("\n", " ").replace("\r", " ").replace("\t", " ")
+    # Replace multiple spaces with single space
+    text = re.sub(r"\s+", " ", text)
+    # Strip leading/trailing whitespace
+    return text.strip()
+
+
+def match_date_formats(parsed_date, text_content, text_lower, date_format):
+    """
+    Match date in various formats within text content.
+
+    Args:
+        parsed_date: datetime object of the date to match
+        text_content: Full text content to search in
+        text_lower: Lowercase version of text_content
+        date_format: Original date format string
+
+    Returns:
+        Tuple of (status, score, match_text, date_format) if found, None otherwise
+    """
+    # Generate alternative date formats to search for
+    alternate_formats = [
+        parsed_date.strftime("%d %b %Y"),  # "03 Oct 2023"
+        parsed_date.strftime("%d %B %Y"),  # "03 October 2023"
+        parsed_date.strftime("%d/%m/%Y"),  # "03/10/2023"
+        parsed_date.strftime("%Y-%m-%d"),  # "2023-10-03"
+        parsed_date.strftime("%Y/%m/%d"),  # "2023/07/07" (YYYY/MM/DD)
+        parsed_date.strftime("%d-%m-%Y"),  # "03-10-2023"
+        parsed_date.strftime("%m/%d/%Y"),  # "10/03/2023"
+        parsed_date.strftime("%B %d, %Y"),  # "October 03, 2023"
+        parsed_date.strftime("%d %b, %Y"),  # "03 Oct, 2023"
+        parsed_date.strftime("%d-%b-%Y"),  # "03-Oct-2023" (4-digit year)
+        parsed_date.strftime("%d-%b-%y"),  # "03-Oct-23" (2-digit year)
+    ]
+
+    # Try to find any of these formats in the text
+    for alt_format in alternate_formats:
+        if alt_format.lower() in text_lower:
+            return "FOUND_DATE_ALT_FORMAT", 0.95, alt_format, date_format
+
+    # Also check without leading zeros
+    day_no_zero = str(parsed_date.day)
+    month_no_zero = str(parsed_date.month)
+    year_2digit = str(parsed_date.year)[2:]  # "2024" -> "24"
+
+    # Detect date format from text to handle ambiguous dates intelligently
+    detected_format = detect_date_format_from_text(text_content)
+
+    additional_formats = [
+        f"{day_no_zero} {parsed_date.strftime('%b')} {parsed_date.year}",  # "3 Oct 2023"
+        f"{day_no_zero}-{parsed_date.strftime('%b')} {parsed_date.year}",  # "31-Jan 2024"
+        f"{day_no_zero}/{month_no_zero}/{parsed_date.year}",  # "3/10/2023" (DD/MM)
+        f"{month_no_zero}/{day_no_zero}/{parsed_date.year}",  # "10/3/2023" (MM/DD)
+        f"{parsed_date.year}/{month_no_zero}/{day_no_zero}",  # "2023/5/9" (YYYY/M/D)
+        f"{day_no_zero}-{month_no_zero}-{parsed_date.year}",  # "3-10-2023" (DD-MM)
+        f"{month_no_zero}-{day_no_zero}-{parsed_date.year}",  # "10-3-2023" (MM-DD)
+        f"{day_no_zero}-{parsed_date.strftime('%b')}-{parsed_date.year}",  # "5-Sep-2021"
+    ]
+
+    # Add 2-digit year formats based on detected format
+    if detected_format == "DD/MM":
+        additional_formats.append(f"{day_no_zero}/{month_no_zero}/{year_2digit}")
+    elif detected_format == "MM/DD":
+        additional_formats.append(f"{month_no_zero}/{day_no_zero}/{year_2digit}")
+    else:
+        # Unknown format - try both
+        additional_formats.append(f"{day_no_zero}/{month_no_zero}/{year_2digit}")
+        additional_formats.append(f"{month_no_zero}/{day_no_zero}/{year_2digit}")
+
+    for alt_format in additional_formats:
+        if alt_format.lower() in text_lower:
+            return "FOUND_DATE_ALT_FORMAT", 0.95, alt_format, date_format
+
+    # If date not found and format is ambiguous, return CHECK_DATE
+    if detected_format == "UNKNOWN":
+        return (
+            "CHECK_DATE",
+            0,
+            "Date format ambiguous - needs manual verification",
+            date_format,
+        )
+
+    return None
+
+
+def get_best_match(value, text_content, field_name=""):
     """
     Enhanced version with date-aware matching.
     If the value is a date, it tries to find the date in different formats in the text.
+
+    Args:
+        value: The value to search for
+        text_content: The text to search in
+        field_name: Name of the field being checked (for Date-specific logic)
 
     Returns: (status, score, match_text, date_format)
     """
@@ -93,37 +235,25 @@ def get_best_match(value, text_content):
             date_format if is_date_valid else "",
         )
 
-    # 3. DATE-SPECIFIC MATCHING: If value is a date, try to find it in alternate formats
-    if is_date_valid:
-        # Generate alternative date formats to search for
-        alternate_formats = [
-            parsed_date.strftime("%d %b %Y"),  # "03 Oct 2023"
-            parsed_date.strftime("%d %B %Y"),  # "03 October 2023"
-            parsed_date.strftime("%d/%m/%Y"),  # "03/10/2023"
-            parsed_date.strftime("%Y-%m-%d"),  # "2023-10-03"
-            parsed_date.strftime("%d-%m-%Y"),  # "03-10-2023"
-            parsed_date.strftime("%m/%d/%Y"),  # "10/03/2023"
-            parsed_date.strftime("%B %d, %Y"),  # "October 03, 2023"
-            parsed_date.strftime("%d %b, %Y"),  # "03 Oct, 2023"
-        ]
+    # 2.3. PERCENTAGE MATCHING: Handle "7%" vs "7 %" for specific fields
+    if "%" in val_str and field_name.lower() in PERCENTAGE_FIELDS:
+        # Try with space before % sign
+        val_with_space = val_str.replace("%", " %")
+        if val_with_space.lower() in text_lower:
+            return "FOUND", 1.0, val_with_space, ""
 
-        # Try to find any of these formats in the text
-        for alt_format in alternate_formats:
-            if alt_format.lower() in text_lower:
-                return "FOUND_DATE_ALT_FORMAT", 0.95, alt_format, date_format
+    # 2.5. NORMALIZED WHITESPACE MATCHING: Handle multi-line text from PDFs
+    val_normalized = normalize_whitespace(val_str)
+    text_normalized = normalize_whitespace(text_content)
 
-        # Also check without leading zeros
-        day_no_zero = str(parsed_date.day)
-        month_no_zero = str(parsed_date.month)
+    if val_normalized in text_normalized:
+        return "FOUND_NORMALIZED", 0.95, val_str, date_format if is_date_valid else ""
 
-        additional_formats = [
-            f"{day_no_zero} {parsed_date.strftime('%b')} {parsed_date.year}",  # "3 Oct 2023"
-            f"{day_no_zero}/{month_no_zero}/{parsed_date.year}",  # "3/10/2023"
-        ]
-
-        for alt_format in additional_formats:
-            if alt_format.lower() in text_lower:
-                return "FOUND_DATE_ALT_FORMAT", 0.95, alt_format, date_format
+    # 3. DATE-SPECIFIC MATCHING: Only for date-related fields
+    if is_date_valid and field_name.lower() in DATE_RELATED_FIELDS:
+        result = match_date_formats(parsed_date, text_content, text_lower, date_format)
+        if result:  # If date match found or CHECK_DATE returned
+            return result
 
     # 3.5. NUMERIC MATCHING: Check if value is numeric with different decimal formatting
     is_match, matched_format = is_numeric_match(val_str, text_content)
@@ -207,8 +337,10 @@ def verify_labels():
 
             stats["Total Fields"] += 1
 
-            # Use enhanced date-aware matching
-            status, score, match_text, date_format = get_best_match(value, text_content)
+            # Use enhanced date-aware matching (pass key for date-specific logic)
+            status, score, match_text, date_format = get_best_match(
+                value, text_content, key
+            )
 
             # Track date fields
             if date_format:
