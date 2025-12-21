@@ -235,6 +235,13 @@ def get_best_match(value, text_content, field_name=""):
             date_format if is_date_valid else "",
         )
 
+    # 2.2. DASH NORMALIZATION: Handle different dash types (–, —, -)
+    # Normalize en-dash (U+2013), em-dash (U+2014) to regular hyphen-minus (U+002D)
+    val_normalized_dash = val_str.replace("–", "-").replace("—", "-")
+    text_normalized_dash = text_content.replace("–", "-").replace("—", "-")
+    if val_normalized_dash.lower() in text_normalized_dash.lower():
+        return "FOUND", 1.0, val_normalized_dash, ""
+
     # 2.3. PERCENTAGE MATCHING: Handle "7%" vs "7 %" for specific fields
     if "%" in val_str and field_name.lower() in PERCENTAGE_FIELDS:
         # Try with space before % sign
@@ -530,7 +537,7 @@ def verify_labels():
             f.write(f"Đã copy vào: {similar_dir}\n")
             f.write("=" * 70 + "\n")
             f.write(
-                "Lưu ý: Các file này có độ tương đồng > 80% nhưng không khớp chính xác.\n"
+                "Lưu ý: Các file này có độ tương đồng > 60% nhưng không khớp chính xác.\n"
             )
             f.write("Cần kiểm tra để xác nhận dữ liệu có đúng hay không.\n")
             f.write("=" * 70 + "\n\n")
