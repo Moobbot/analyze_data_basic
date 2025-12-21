@@ -26,6 +26,43 @@ def flatten_json(y):
     return out
 
 
+def is_numeric_match(value_str, text_content):
+    """
+    Check if a numeric value appears in text with different decimal formatting.
+    Handles cases like JSON: 0.0 vs PDF Text: 0.00
+
+    Returns: (is_match, matched_format) or (False, None)
+    """
+    try:
+        # Try to parse as a number
+        num_value = float(value_str)
+
+        # Generate common decimal formats
+        # Handle both positive and negative numbers, with/without leading spaces
+        formats_to_try = [
+            f"{num_value:.0f}",  # 0, 10, 100
+            f"{num_value:.1f}",  # 0.0, 10.5, 100.0
+            f"{num_value:.2f}",  # 0.00, 10.50, 100.00
+            f"{num_value:.3f}",  # 0.000, 10.500, 100.000
+            f" {num_value:.2f}",  # With leading space (common in PDFs)
+            f" {num_value:.0f}",
+            f" {num_value:.1f}",
+        ]
+
+        # Also add the original string representation
+        formats_to_try.append(value_str)
+
+        # Search for any of these formats in the text
+        for fmt in formats_to_try:
+            if fmt in text_content:
+                return True, fmt
+
+        return False, None
+    except (ValueError, TypeError):
+        # Not a numeric value
+        return False, None
+
+
 def get_best_match(value, text_content):
     """
     Enhanced version with date-aware matching.
@@ -33,7 +70,7 @@ def get_best_match(value, text_content):
 
     Returns: (status, score, match_text, date_format)
     """
-    if not value or str(value).strip() == "":
+    if value is None or (isinstance(value, str) and value.strip() == ""):
         return "N/A", 0, "", ""
 
     val_str = str(value).strip()
@@ -87,6 +124,11 @@ def get_best_match(value, text_content):
         for alt_format in additional_formats:
             if alt_format.lower() in text_lower:
                 return "FOUND_DATE_ALT_FORMAT", 0.95, alt_format, date_format
+
+    # 3.5. NUMERIC MATCHING: Check if value is numeric with different decimal formatting
+    is_match, matched_format = is_numeric_match(val_str, text_content)
+    if is_match:
+        return "FOUND_NUMERIC_FORMAT", 1.0, matched_format, ""
 
     # 4. Fuzzy Match
     lines = [line.strip() for line in text_content.splitlines() if line.strip()]
