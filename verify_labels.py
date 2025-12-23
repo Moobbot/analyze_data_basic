@@ -102,6 +102,7 @@ def is_numeric_match(value_str, text_content):
 
         for p in range(original_precision, max_total_precision + 1):
             formats_to_try.add(f"{num_value:.{p}f}")
+            formats_to_try.add(f"{num_value:,.{p}f}")  # Add comma separator support
 
         # Also add the original string representation, as it might have specific formatting
         # (e.g., "150.0" vs "150") or more precision than our generated ones.
