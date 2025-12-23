@@ -352,8 +352,89 @@ def get_best_match(value, text_content, field_name=""):
     return "MISSING", best_ratio, best_line, date_format if is_date_valid else ""
 
 
+def check_file_consistency():
+    """
+    Check consistency between JSON labels and PDF datasets.
+    Finds files present in Label directory but missing in Dataset directory, and vice versa.
+    """
+    print(">>> CHECKING FILE CONSISTENCY (Labels vs Datasets)")
+
+    # Get all JSON files from LABEL_DIR
+    if not os.path.exists(config.LABEL_DIR):
+        print(f"Error: Label directory not found: {config.LABEL_DIR}")
+        return
+
+    json_files = {
+        os.path.splitext(f)[0]
+        for f in os.listdir(config.LABEL_DIR)
+        if f.lower().endswith(".json")
+    }
+
+    # Get all PDF files from DATASET_DIR
+    if not os.path.exists(config.DATASET_DIR):
+        print(f"Error: Dataset directory not found: {config.DATASET_DIR}")
+        return
+
+    pdf_files = {
+        os.path.splitext(f)[0]
+        for f in os.listdir(config.DATASET_DIR)
+        if f.lower().endswith(".pdf")
+    }
+
+    # Find discrepancies
+    json_only = json_files - pdf_files
+    pdf_only = pdf_files - json_files
+
+    # Report results
+    print(f"Total Labels (JSON): {len(json_files)}")
+    print(f"Total PDFs: {len(pdf_files)}")
+    print(f"Labels without PDF: {len(json_only)}")
+    print(f"PDFs without Label: {len(pdf_only)}")
+
+    missing_refs_report = os.path.join(config.REVIEW_DIR, "missing_files_reference.txt")
+    utils.ensure_dir_exists(config.REVIEW_DIR)
+
+    try:
+        with open(missing_refs_report, "w", encoding="utf-8") as f:
+            f.write("BÁO CÁO KIỂM TRA SỰ NHẤT QUÁN FILE (FILE CONSISTENCY CHECK)\n")
+            f.write("=" * 70 + "\n")
+            f.write(f"Label Directory: {config.LABEL_DIR}\n")
+            f.write(f"Dataset Directory: {config.DATASET_DIR}\n")
+            f.write("-" * 70 + "\n")
+            f.write(f"Tổng số file Label (JSON): {len(json_files)}\n")
+            f.write(f"Tổng số file Dataset (PDF): {len(pdf_files)}\n")
+            f.write("=" * 70 + "\n\n")
+
+            f.write(f"1. CÁC FILE CÓ LABEL NHƯNG THIẾU PDF ({len(json_only)} files)\n")
+            f.write("-" * 50 + "\n")
+            if json_only:
+                for name in sorted(json_only):
+                    f.write(f"{name}.json (Missing {name}.pdf)\n")
+            else:
+                f.write("Không có (Tất cả label đều có PDF tương ứng).\n")
+            f.write("\n")
+
+            f.write(f"2. CÁC FILE CÓ PDF NHƯNG THIẾU LABEL ({len(pdf_only)} files)\n")
+            f.write("-" * 50 + "\n")
+            if pdf_only:
+                for name in sorted(pdf_only):
+                    f.write(f"{name}.pdf (Missing {name}.json)\n")
+            else:
+                f.write("Không có (Tất cả PDF đều có Label tương ứng).\n")
+            f.write("\n")
+
+        print(f"Consistency report saved to: {missing_refs_report}")
+
+    except Exception as e:
+        print(f"Error writing consistency report: {e}")
+    print("=" * 70 + "\n")
+
+
 def verify_labels():
     print(">>> STARTING LABEL VERIFICATION")
+
+    # Check file consistency first
+    check_file_consistency()
 
     # Ensure review dir exists
     utils.ensure_dir_exists(config.REVIEW_DIR)
