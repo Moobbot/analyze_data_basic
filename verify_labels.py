@@ -151,6 +151,30 @@ def normalize_whitespace(text):
     return text.strip()
 
 
+def find_context_line(value, text_content, case_insensitive=False):
+    """
+    Find the line in text_content that contains the value.
+    Returns the original line from text_content to preserve case context.
+    """
+    if not value or not text_content:
+        return ""
+
+    lines = text_content.splitlines()
+    val_check = value
+    if case_insensitive:
+        val_check = value.lower()
+
+    for line in lines:
+        line_check = line
+        if case_insensitive:
+            line_check = line.lower()
+
+        if val_check in line_check:
+            return line.strip()
+
+    return ""
+
+
 def match_date_formats(parsed_date, text_content, text_lower, date_format):
     """
     Match date in various formats within text content.
@@ -239,10 +263,10 @@ def get_best_match(value, text_content, field_name=""):
         text_content: The text to search in
         field_name: Name of the field being checked (for Date-specific logic)
 
-    Returns: (status, score, match_text, date_format)
+    Returns: (status, score, match_text, date_format, context_line)
     """
     if value is None or (isinstance(value, str) and value.strip() == ""):
-        return "N/A", 0, "", ""
+        return "N/A", 0, "", "", ""
 
     val_str = str(value).strip()
 
@@ -251,17 +275,20 @@ def get_best_match(value, text_content, field_name=""):
 
     # 1. Exact Match case-sensitive
     if val_str in text_content:
-        return "FOUND", 1.0, val_str, date_format if is_date_valid else ""
+        context = find_context_line(val_str, text_content, case_insensitive=False)
+        return "FOUND", 1.0, val_str, date_format if is_date_valid else "", context
 
     # 2. Exact Match case-insensitive
     text_lower = text_content.lower()
     val_lower = val_str.lower()
     if val_lower in text_lower:
+        context = find_context_line(val_str, text_content, case_insensitive=True)
         return (
             "FOUND_CASE_INSENSITIVE",
             0.9,
             val_str,
             date_format if is_date_valid else "",
+            context,
         )
 
     # 2.2. DASH NORMALIZATION: Handle different dash types (–, —, -)
@@ -269,7 +296,15 @@ def get_best_match(value, text_content, field_name=""):
     val_normalized_dash = val_str.replace("–", "-").replace("—", "-")
     text_normalized_dash = text_content.replace("–", "-").replace("—", "-")
     if val_normalized_dash.lower() in text_normalized_dash.lower():
-        return "FOUND", 1.0, val_normalized_dash, ""
+        # Context finding might be tricky with normalization, try best effort
+        # Try to find the normalized string in the normalized text line
+        lines = text_content.splitlines()
+        for line in lines:
+            line_norm = line.replace("–", "-").replace("—", "-")
+            if val_normalized_dash.lower() in line_norm.lower():
+                return "FOUND", 1.0, val_normalized_dash, "", line.strip()
+
+        return "FOUND", 1.0, val_normalized_dash, "", ""
 
     # 2.3. PERCENTAGE MATCHING: Handle "7%" vs "7 %" and "8%" vs "8.00%"
     # Check if field name contains any percentage-related keyword
@@ -312,29 +347,54 @@ def get_best_match(value, text_content, field_name=""):
         # Try with space before % sign (e.g., "8%" -> "8 %")
         val_with_space = val_normalized.replace("%", " %")
         if val_with_space.lower() in text_normalized_pct.lower():
-            return "FOUND", 1.0, val_with_space, ""
+            # Best effort context
+            context = find_context_line(
+                val_with_space, text_normalized_pct, case_insensitive=True
+            )
+            return "FOUND", 1.0, val_with_space, "", context
 
         # Try without space (original normalized value)
         if val_normalized.lower() in text_normalized_pct.lower():
-            return "FOUND", 1.0, val_normalized, ""
+            context = find_context_line(
+                val_normalized, text_normalized_pct, case_insensitive=True
+            )
+            return "FOUND", 1.0, val_normalized, "", context
 
     # 2.5. NORMALIZED WHITESPACE MATCHING: Handle multi-line text from PDFs
     val_normalized = normalize_whitespace(val_str)
     text_normalized = normalize_whitespace(text_content)
 
     if val_normalized in text_normalized:
-        return "FOUND_NORMALIZED", 1.0, val_str, date_format if is_date_valid else ""
+        # Context is hard for multi-line, return empty or try to find containing line in normalized text
+        return (
+            "FOUND_NORMALIZED",
+            1.0,
+            val_str,
+            date_format if is_date_valid else "",
+            "",
+        )
 
     # 3. DATE-SPECIFIC MATCHING: Only for date-related fields
     if is_date_valid and field_name.lower() in DATE_RELATED_FIELDS:
         result = match_date_formats(parsed_date, text_content, text_lower, date_format)
         if result:  # If date match found or CHECK_DATE returned
-            return result
+            # match_date_formats returns (status, score, match_text, date_format)
+            # We need to add context
+            status, score, match_text, fmt = result
+            context = ""
+            if status != "CHECK_DATE":
+                context = find_context_line(
+                    match_text, text_content, case_insensitive=True
+                )
+            return status, score, match_text, fmt, context
 
     # 3.5. NUMERIC MATCHING: Check if value is numeric with different decimal formatting
     is_match, matched_format = is_numeric_match(val_str, text_content)
     if is_match:
-        return "FOUND_NUMERIC_FORMAT", 1.0, matched_format, ""
+        context = find_context_line(
+            matched_format, text_content, case_insensitive=False
+        )
+        return "FOUND_NUMERIC_FORMAT", 1.0, matched_format, "", context
 
     # 4. Fuzzy Match
     lines = [line.strip() for line in text_content.splitlines() if line.strip()]
@@ -348,9 +408,15 @@ def get_best_match(value, text_content, field_name=""):
             best_line = line
 
     if best_ratio >= 0.6:
-        return "SIMILAR", best_ratio, best_line, date_format if is_date_valid else ""
+        return (
+            "SIMILAR",
+            best_ratio,
+            best_line,
+            date_format if is_date_valid else "",
+            best_line,
+        )
 
-    return "MISSING", best_ratio, best_line, date_format if is_date_valid else ""
+    return "MISSING", best_ratio, best_line, date_format if is_date_valid else "", ""
 
 
 def check_file_consistency():
@@ -495,7 +561,7 @@ def verify_labels():
             stats["Total Fields"] += 1
 
             # Use enhanced date-aware matching (pass key for date-specific logic)
-            status, score, match_text, date_format = get_best_match(
+            status, score, match_text, date_format, context_line = get_best_match(
                 value, text_content, key
             )
 
@@ -521,6 +587,7 @@ def verify_labels():
                     "Score": f"{score:.2f}",
                     "BestMatchLine": match_text if status != "FOUND" else "",
                     "DateFormat": date_format,
+                    "ContextLine": context_line,
                 }
             )
 
@@ -734,6 +801,7 @@ def verify_labels():
                 "Score",
                 "BestMatchLine",
                 "DateFormat",
+                "ContextLine",
             ]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
