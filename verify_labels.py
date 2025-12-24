@@ -188,6 +188,9 @@ def match_date_formats(parsed_date, text_content, text_lower, date_format):
     Returns:
         Tuple of (status, score, match_text, date_format) if found, None otherwise
     """
+    # Normalize soft hyphens to regular hyphens in text for matching
+    text_lower = text_lower.replace("\xad", "-")
+
     # Generate alternative date formats to search for
     alternate_formats = [
         parsed_date.strftime("%d %b %Y"),  # "03 Oct 2023"
@@ -201,6 +204,11 @@ def match_date_formats(parsed_date, text_content, text_lower, date_format):
         parsed_date.strftime("%d %b, %Y"),  # "03 Oct, 2023"
         parsed_date.strftime("%d-%b-%Y"),  # "03-Oct-2023" (4-digit year)
         parsed_date.strftime("%d-%b-%y"),  # "03-Oct-23" (2-digit year)
+        # Added mixed formats for Full Month
+        parsed_date.strftime("%d-%B %Y"),  # "30-April 2023"
+        parsed_date.strftime("%d-%B %y"),  # "30-April 23"
+        parsed_date.strftime("%d-%B-%Y"),  # "30-April-2023"
+        parsed_date.strftime("%d-%B-%y"),  # "30-April-23"
     ]
 
     # Try to find any of these formats in the text
@@ -225,7 +233,76 @@ def match_date_formats(parsed_date, text_content, text_lower, date_format):
         f"{day_no_zero}-{month_no_zero}-{parsed_date.year}",  # "3-10-2023" (DD-MM)
         f"{month_no_zero}-{day_no_zero}-{parsed_date.year}",  # "10-3-2023" (MM-DD)
         f"{day_no_zero}-{parsed_date.strftime('%b')}-{parsed_date.year}",  # "5-Sep-2021"
+        # Added Month Day, Year formats (no leading zero)
+        f"{parsed_date.strftime('%b')} {day_no_zero}, {parsed_date.year}",  # "Jul 3, 2023"
+        f"{parsed_date.strftime('%B')} {day_no_zero}, {parsed_date.year}",  # "July 3, 2023"
+        # Added Dot-separated formats
+        parsed_date.strftime("%d.%m.%Y"),  # "14.11.2022"
+        parsed_date.strftime("%d.%m.%y"),  # "14.11.22"
+        f"{day_no_zero}.{month_no_zero}.{parsed_date.year}",  # "3.4.2023"
+        f"{day_no_zero}.{month_no_zero}.{year_2digit}",  # "3.4.23"
     ]
+
+    # Add Ordinal Date Formats (e.g., NOVEMBER25TH, 2022)
+    def get_ordinal_suffix(day):
+        if 11 <= day <= 13:
+            return "th"
+        last_digit = day % 10
+        if last_digit == 1:
+            return "st"
+        elif last_digit == 2:
+            return "nd"
+        elif last_digit == 3:
+            return "rd"
+        else:
+            return "th"
+
+    suffix = get_ordinal_suffix(parsed_date.day)
+
+    # "NOVEMBER25TH, 2022" (No space between Month and Day, Uppercase Month usually)
+    # We add both Normal and Upper case variants to the list, logic below will lower() them anyway.
+    additional_formats.append(
+        f"{parsed_date.strftime('%B')}{parsed_date.day}{suffix}, {parsed_date.year}"
+    )
+    additional_formats.append(
+        f"{parsed_date.strftime('%B').upper()}{parsed_date.day}{suffix.upper()}, {parsed_date.year}"
+    )
+
+    # "NOVEMBER 25TH, 2022" (With space between Month and Day)
+    additional_formats.append(
+        f"{parsed_date.strftime('%B')} {parsed_date.day}{suffix}, {parsed_date.year}"
+    )
+    additional_formats.append(
+        f"{parsed_date.strftime('%B').upper()} {parsed_date.day}{suffix.upper()}, {parsed_date.year}"
+    )
+
+    additional_formats.append(
+        f"{parsed_date.strftime('%B').upper()} {parsed_date.day}{suffix.upper()}, {parsed_date.year}"
+    )
+
+    # "2nd Dec 2022" (Day + Suffix + Space + Month + Space + Year)
+    additional_formats.append(
+        f"{parsed_date.day}{suffix} {parsed_date.strftime('%b')} {parsed_date.year}"
+    )
+    additional_formats.append(
+        f"{parsed_date.day}{suffix} {parsed_date.strftime('%B')} {parsed_date.year}"
+    )
+
+    additional_formats.append(
+        f"{parsed_date.day}{suffix} {parsed_date.strftime('%B')} {parsed_date.year}"
+    )
+
+    # "Jul 1st,2025" (Month + Space + Day + Suffix + Comma + NO SPACE + Year)
+    additional_formats.append(
+        f"{parsed_date.strftime('%b')} {parsed_date.day}{suffix},{parsed_date.year}"
+    )
+    additional_formats.append(
+        f"{parsed_date.strftime('%B')} {parsed_date.day}{suffix},{parsed_date.year}"
+    )
+
+    # Added Compact Date Formats (e.g., 23Dec2022)
+    additional_formats.append(parsed_date.strftime("%d%b%Y"))
+    additional_formats.append(parsed_date.strftime("%d%B%Y"))
 
     # Add 2-digit year formats based on detected format
     if detected_format == "DD/MM":
@@ -292,15 +369,19 @@ def get_best_match(value, text_content, field_name=""):
         )
 
     # 2.2. DASH NORMALIZATION: Handle different dash types (–, —, -)
-    # Normalize en-dash (U+2013), em-dash (U+2014) to regular hyphen-minus (U+002D)
-    val_normalized_dash = val_str.replace("–", "-").replace("—", "-")
-    text_normalized_dash = text_content.replace("–", "-").replace("—", "-")
+    # Normalize en-dash (U+2013), em-dash (U+2014) AND Soft Hyphen (U+00AD) to regular hyphen-minus (U+002D)
+    val_normalized_dash = (
+        val_str.replace("–", "-").replace("—", "-").replace("\xad", "-")
+    )
+    text_normalized_dash = (
+        text_content.replace("–", "-").replace("—", "-").replace("\xad", "-")
+    )
     if val_normalized_dash.lower() in text_normalized_dash.lower():
         # Context finding might be tricky with normalization, try best effort
         # Try to find the normalized string in the normalized text line
         lines = text_content.splitlines()
         for line in lines:
-            line_norm = line.replace("–", "-").replace("—", "-")
+            line_norm = line.replace("–", "-").replace("—", "-").replace("\xad", "-")
             if val_normalized_dash.lower() in line_norm.lower():
                 return "FOUND", 1.0, val_normalized_dash, "", line.strip()
 
