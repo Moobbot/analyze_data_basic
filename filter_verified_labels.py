@@ -20,7 +20,7 @@ def filter_verified_labels():
         return
 
     # Create output directories
-    label_true_dir = os.path.join(config.BASE_DIR, "Label_true")
+    label_true_dir = config.LABEL_TRUE_DIR
     files_dir = os.path.join(label_true_dir, "files")  # For PDFs
     labels_dir = os.path.join(label_true_dir, "labels")  # For JSONs
 

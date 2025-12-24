@@ -5,10 +5,13 @@ import sys
 BASE_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
 
 # Source Directories
-DATASET_DIR = os.path.join(BASE_DIR, "Dataset_Invoice_one_page")
-LABEL_DIR = os.path.join(BASE_DIR, "Label_Invoice_One_Page")
+DATASET_DIR = os.path.join(BASE_DIR, "Datasets", "files")
+LABEL_DIR = os.path.join(BASE_DIR, "Datasets", "labels")
 
 DIRECTORIES = {"Dataset": DATASET_DIR, "Label": LABEL_DIR}
+
+# Verified Labels Output
+LABEL_TRUE_DIR = os.path.join(BASE_DIR, "Label_true_data_1")
 
 # Destination Directories (for separation)
 DEST_MISSING = os.path.join(BASE_DIR, "output_analyze", "Files_Missing_In_Label")
