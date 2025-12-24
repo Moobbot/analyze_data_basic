@@ -2,6 +2,7 @@ import os
 import csv
 import shutil
 import config
+import utils
 
 
 def filter_verified_labels():
@@ -53,6 +54,7 @@ def filter_verified_labels():
                     "FOUND_DATE_ALT_FORMAT",
                     "FOUND_CASE_INSENSITIVE",
                     "FOUND_NORMALIZED",
+                    "CHECK_DATE",
                     # "FOUND_NUMERIC_FORMAT",
                 ]
 
@@ -87,6 +89,7 @@ def filter_verified_labels():
             dst_json = os.path.join(labels_dir, filename)
 
             if os.path.exists(src_json):
+                utils.ensure_dir_exists(os.path.dirname(dst_json))
                 shutil.move(src_json, dst_json)
                 copied_json += 1
 
@@ -97,6 +100,7 @@ def filter_verified_labels():
                 dst_pdf = os.path.join(files_dir, pdf_filename)
 
                 if os.path.exists(src_pdf):
+                    utils.ensure_dir_exists(os.path.dirname(dst_pdf))
                     shutil.move(src_pdf, dst_pdf)
                     copied_pdf += 1
             else:

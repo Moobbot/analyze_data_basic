@@ -14,6 +14,17 @@ DIRECTORIES = {"Dataset": DATASET_DIR, "Label": LABEL_DIR}
 DEST_MISSING = os.path.join(BASE_DIR, "output_analyze", "Files_Missing_In_Label")
 DEST_DOCX = os.path.join(BASE_DIR, "output_analyze", "Files_Docx")
 
+# PDF Separation Directories
+PDF_ERROR_DIR = os.path.join(BASE_DIR, "output_analyze", "PDF_Error_Files")
+PDF_ERROR_FILES_DIR = os.path.join(PDF_ERROR_DIR, "files")
+PDF_ERROR_LABELS_DIR = os.path.join(PDF_ERROR_DIR, "labels")
+
+PDF_IMAGE_DIR = os.path.join(BASE_DIR, "output_analyze", "PDF_Image_Files")
+PDF_IMAGE_FILES_DIR = os.path.join(PDF_IMAGE_DIR, "files")
+PDF_IMAGE_LABELS_DIR = os.path.join(PDF_IMAGE_DIR, "labels")
+
+PDF_NO_LABEL_DIR = os.path.join(BASE_DIR, "output_analyze", "PDF_No_Label")
+
 # Output Directory
 REVIEW_DIR = os.path.join(BASE_DIR, "output_analyze", "review_data")
 EXTRACTED_TEXT_DIR = os.path.join(BASE_DIR, "output_analyze", "Extracted_Text")
@@ -27,6 +38,7 @@ OUTPUT_FINAL_NAME = "final_summary.txt"
 # PDF Extraction Reports
 ERROR_PDF_REPORT = os.path.join(REVIEW_DIR, "pdf_error_files.txt")
 IMAGE_PDF_REPORT = os.path.join(REVIEW_DIR, "pdf_image_files.txt")
+NO_LABEL_PDF_REPORT = os.path.join(REVIEW_DIR, "pdf_no_label_files.txt")
 
 # Label Verification Reports
 VERIFY_REPORT_CSV = os.path.join(REVIEW_DIR, "label_verification.csv")
