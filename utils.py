@@ -198,3 +198,23 @@ def ensure_dir_exists(directory):
             print(f"Error creating directory {directory}: {e}")
             return False
     return True
+
+
+def list_files_recursive(directory, extension):
+    """
+    List files with specific extension recursively (all levels).
+    Returns matched files with relative paths from the directory.
+    """
+    files = []
+    if not os.path.exists(directory):
+        return files
+
+    for root, dirs, filenames in os.walk(directory):
+        for filename in filenames:
+            if filename.lower().endswith(extension.lower()):
+                # Get full path
+                full_path = os.path.join(root, filename)
+                # Get relative path from valid directory
+                rel_path = os.path.relpath(full_path, directory)
+                files.append(rel_path)
+    return files

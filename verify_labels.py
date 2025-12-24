@@ -512,22 +512,18 @@ def check_file_consistency():
         print(f"Error: Label directory not found: {config.LABEL_DIR}")
         return
 
-    json_files = {
-        os.path.splitext(f)[0]
-        for f in os.listdir(config.LABEL_DIR)
-        if f.lower().endswith(".json")
-    }
+    # Use recursive list
+    json_files_list = utils.list_files_recursive(config.LABEL_DIR, ".json")
+    json_files = {os.path.splitext(f)[0] for f in json_files_list}
 
     # Get all PDF files from DATASET_DIR
     if not os.path.exists(config.DATASET_DIR):
         print(f"Error: Dataset directory not found: {config.DATASET_DIR}")
         return
 
-    pdf_files = {
-        os.path.splitext(f)[0]
-        for f in os.listdir(config.DATASET_DIR)
-        if f.lower().endswith(".pdf")
-    }
+    # Use recursive list
+    pdf_files_list = utils.list_files_recursive(config.DATASET_DIR, ".pdf")
+    pdf_files = {os.path.splitext(f)[0] for f in pdf_files_list}
 
     # Find discrepancies
     json_only = json_files - pdf_files
@@ -592,9 +588,9 @@ def verify_labels():
         print(f"Error: Label directory not found: {config.LABEL_DIR}")
         return
 
-    json_files = [
-        f for f in os.listdir(config.LABEL_DIR) if f.lower().endswith(".json")
-    ]
+    # Use recursive list
+    json_files = utils.list_files_recursive(config.LABEL_DIR, ".json")
+
     total_files = len(json_files)
     print(f"Found {total_files} JSON label files.")
 
@@ -721,6 +717,7 @@ def verify_labels():
                     try:
                         src = os.path.join(config.LABEL_DIR, error_info["Filename"])
                         dst = os.path.join(check_for_dir, error_info["Filename"])
+                        utils.ensure_dir_exists(os.path.dirname(dst))
                         shutil.copy2(src, dst)
                     except Exception as copy_error:
                         f.write(f"   [Không thể copy file: {copy_error}]\n\n")
@@ -759,6 +756,7 @@ def verify_labels():
                     src_json = os.path.join(config.LABEL_DIR, json_filename)
                     dst_json = os.path.join(missing_dir, json_filename)
                     if os.path.exists(src_json):
+                        utils.ensure_dir_exists(os.path.dirname(dst_json))
                         shutil.copy2(src_json, dst_json)
                 except Exception as e:
                     f.write(f"   [Lỗi copy JSON: {e}]\n")
@@ -771,6 +769,7 @@ def verify_labels():
                     dst_pdf = os.path.join(missing_dir, pdf_filename)
 
                     if os.path.exists(src_pdf):
+                        utils.ensure_dir_exists(os.path.dirname(dst_pdf))
                         shutil.copy2(src_pdf, dst_pdf)
                     else:
                         f.write(f"   [PDF không tồn tại: {pdf_filename}]\n")
@@ -801,6 +800,7 @@ def verify_labels():
                     src_json = os.path.join(config.LABEL_DIR, json_filename)
                     dst_json = os.path.join(na_dir, json_filename)
                     if os.path.exists(src_json):
+                        utils.ensure_dir_exists(os.path.dirname(dst_json))
                         shutil.copy2(src_json, dst_json)
                 except Exception as e:
                     f.write(f"   [Lỗi copy JSON: {e}]\n")
@@ -813,6 +813,7 @@ def verify_labels():
                     dst_pdf = os.path.join(na_dir, pdf_filename)
 
                     if os.path.exists(src_pdf):
+                        utils.ensure_dir_exists(os.path.dirname(dst_pdf))
                         shutil.copy2(src_pdf, dst_pdf)
                     else:
                         f.write(f"   [PDF không tồn tại: {pdf_filename}]\n")
@@ -848,6 +849,7 @@ def verify_labels():
                     src_json = os.path.join(config.LABEL_DIR, json_filename)
                     dst_json = os.path.join(similar_dir, json_filename)
                     if os.path.exists(src_json):
+                        utils.ensure_dir_exists(os.path.dirname(dst_json))
                         shutil.copy2(src_json, dst_json)
                 except Exception as e:
                     f.write(f"   [Lỗi copy JSON: {e}]\n")
@@ -860,6 +862,7 @@ def verify_labels():
                     dst_pdf = os.path.join(similar_dir, pdf_filename)
 
                     if os.path.exists(src_pdf):
+                        utils.ensure_dir_exists(os.path.dirname(dst_pdf))
                         shutil.copy2(src_pdf, dst_pdf)
                     else:
                         f.write(f"   [PDF không tồn tại: {pdf_filename}]\n")
