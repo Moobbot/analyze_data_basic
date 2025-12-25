@@ -72,68 +72,79 @@ def detect_date_format_from_text(text_content):
 
 def is_numeric_match(value_str, text_content):
     """
-    Check if a numeric value appears in text with different decimal formatting.
-    Handles cases like JSON: 0.0 vs PDF Text: 0.00
-    Uses word boundary matching to ensure exact numeric matches.
-    Prioritizes matching formats with equal or higher precision than the original value.
+    Check if a numeric value appears in text by comparing numerical values.
+    Finds all potential number patterns in text, parses them, and compares matches.
+    Handles:
+    - Commas: 2,000.00 matches 2000.0
+    - Trailing zeros: 150.40 matches 150.4
+    - Precision differences: -2000.0 matches -2,000.00
+    - Accounting format: (2,000.00) matches -2000.0
+    - Unicode dashes/minus signs
 
     Returns: (is_match, matched_format) or (False, None)
     """
     import re
+    import math
 
     try:
-        # Try to parse as a number
-        num_value = float(value_str)
-
-        # Determine the original precision of the value_str
-        original_precision = 0
-        if "." in value_str:
-            decimal_part = value_str.split(".")[-1]
-            original_precision = len(decimal_part)
-
-        formats_to_try = set()  # Use a set to avoid duplicates
-
-        # Generate formats with equal or higher precision
-        # We'll check up to 3 decimal places beyond the original, or a max of 5 total
-        max_additional_precision = 3
-        max_total_precision = original_precision + max_additional_precision
-        if max_total_precision > 5:  # Cap total precision to avoid excessive checks
-            max_total_precision = 5
-
-        for p in range(original_precision, max_total_precision + 1):
-            formats_to_try.add(f"{num_value:.{p}f}")
-            formats_to_try.add(f"{num_value:,.{p}f}")  # Add comma separator support
-
-        # Also add the original string representation, as it might have specific formatting
-        # (e.g., "150.0" vs "150") or more precision than our generated ones.
-        formats_to_try.add(value_str)
-
-        # Add formats without trailing zeros if original had them (e.g., 150.40 -> 150.4)
-        # This is important if the text has less precision but is still a valid match.
-        # However, the instruction specifically says "equal or higher precision".
-        # So, we will only add lower precision formats if the original_precision is > 0
-        # and we want to allow matching "150.41" to "150.4" if the user meant it.
-        # For now, sticking to the instruction: "equal or higher precision".
-        # If original_precision is 0, we can still match 150 to 150.0, 150.00 etc.
-        # The loop `range(original_precision, ...)` already handles this.
-        # So, if original is "150.41", it will try "150.41", "150.410", "150.4100".
-        # It will NOT try "150.4" or "150".
-
-        # Search for any of these formats in the text with word boundaries
-        for fmt in formats_to_try:
-            # Escape special regex characters (like .)
-            escaped_fmt = re.escape(fmt)
-            # Use word boundary \b to ensure we match complete numbers
-            # \b matches at positions where one side is a word character and the other is not
-            pattern = r"\b" + escaped_fmt + r"\b"
-
-            if re.search(pattern, text_content):
-                return True, fmt
-
-        return False, None
+        # Try to parse target value
+        target_val = float(value_str)
     except (ValueError, TypeError):
-        # Not a numeric value
         return False, None
+
+    # Normalize unicode dashes/hyphens in text content to standard hyphen
+    # U+2212 (Minus Sign), U+2013 (En Dash), U+2014 (Em Dash), U+00AD (Soft Hyphen)
+    normalized_text = (
+        text_content.replace("\u2212", "-")
+        .replace("\u2013", "-")
+        .replace("\u2014", "-")
+        .replace("\u00ad", "-")
+    )
+
+    # Regex to find all potential numbers in text, including accounting format
+    # Matches:
+    # 1. Optional opening parenthesis \(?
+    # 2. Optional negative sign -?
+    # 3. Digits with optional commas [\d,]+
+    # 4. Optional decimal part (?:\.\d+)?
+    # 5. Optional closing parenthesis \)?
+    pattern = r"\(?-?[\d,]+(?:\.\d+)?\)?"
+
+    # Iterate through all matches in the text
+    for match in re.finditer(pattern, normalized_text):
+        original_text = match.group(0)
+
+        # Determine if it's accounting format (surrounded by parens)
+        is_accounting_negative = False
+        clean_text = original_text
+        if clean_text.startswith("(") and clean_text.endswith(")"):
+            is_accounting_negative = True
+            clean_text = clean_text[1:-1]  # Remove parens
+
+        # Clean up the candidate string (remove commas) to parse it
+        clean_text = clean_text.replace(",", "")
+
+        # specific check to avoid matching things like "," or "." or empty string
+        if not any(c.isdigit() for c in clean_text):
+            continue
+
+        try:
+            candidate_val = float(clean_text)
+
+            # Apply accounting negative logic
+            if is_accounting_negative:
+                candidate_val = -candidate_val
+
+            # Compare with a small tolerance for floating point arithmetic
+            if math.isclose(target_val, candidate_val, rel_tol=1e-9, abs_tol=1e-9):
+                # Verify that it's a "whole word" match in the context if possible,
+                # but for complex patterns like (2,000.00), regex boundary check is safer manually if needed.
+                return True, original_text
+
+        except ValueError:
+            continue
+
+    return False, None
 
 
 def normalize_whitespace(text):
@@ -346,6 +357,12 @@ def get_best_match(value, text_content, field_name=""):
         return "N/A", 0, "", "", ""
 
     val_str = str(value).strip()
+
+    # Special handling for Currency: USD -> US$
+    if "currency" in field_name.lower() and val_str == "USD":
+        if "US$" in text_content:
+            context = find_context_line("US$", text_content, case_insensitive=False)
+            return "FOUND_ALIAS", 1.0, "US$", "", context
 
     # Check if value is a date
     is_date_valid, parsed_date, date_format = utils.validate_date(val_str)
