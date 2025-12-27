@@ -220,6 +220,9 @@ def match_date_formats(parsed_date, text_content, text_lower, date_format):
         parsed_date.strftime("%d-%B %y"),  # "30-April 23"
         parsed_date.strftime("%d-%B-%Y"),  # "30-April-2023"
         parsed_date.strftime("%d-%B-%y"),  # "30-April-23"
+        # Added 2-digit year slash formats
+        parsed_date.strftime("%d/%m/%y"),  # "30/05/25"
+        parsed_date.strftime("%m/%d/%y"),  # "05/30/25"
     ]
 
     # Try to find any of these formats in the text
