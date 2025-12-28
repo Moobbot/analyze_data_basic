@@ -104,11 +104,14 @@ def is_numeric_match(value_str, text_content):
     # Regex to find all potential numbers in text, including accounting format
     # Matches:
     # 1. Optional opening parenthesis \(?
-    # 2. Optional negative sign -?
-    # 3. Digits with optional commas [\d,]+
-    # 4. Optional decimal part (?:\.\d+)?
-    # 5. Optional closing parenthesis \)?
-    pattern = r"\(?-?[\d,]+(?:\.\d+)?\)?"
+    # 2. Optional whitespace \s*
+    # 3. Optional negative sign -?
+    # 4. Optional whitespace \s*
+    # 5. Digits with optional commas [\d,]+
+    # 6. Optional decimal part (?:\.\d+)?
+    # 7. Optional whitespace \s*
+    # 8. Optional closing parenthesis \)?
+    pattern = r"\(?\s*-?\s*[\d,]+(?:\.\d+)?\s*\)?"
 
     # Iterate through all matches in the text
     for match in re.finditer(pattern, normalized_text):
@@ -116,13 +119,13 @@ def is_numeric_match(value_str, text_content):
 
         # Determine if it's accounting format (surrounded by parens)
         is_accounting_negative = False
-        clean_text = original_text
+        clean_text = original_text.strip()
         if clean_text.startswith("(") and clean_text.endswith(")"):
             is_accounting_negative = True
             clean_text = clean_text[1:-1]  # Remove parens
 
-        # Clean up the candidate string (remove commas) to parse it
-        clean_text = clean_text.replace(",", "")
+        # Clean up the candidate string (remove commas and spaces) to parse it
+        clean_text = clean_text.replace(",", "").replace(" ", "")
 
         # specific check to avoid matching things like "," or "." or empty string
         if not any(c.isdigit() for c in clean_text):
