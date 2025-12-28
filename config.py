@@ -15,6 +15,9 @@ LABEL_TRUE_DIR = os.path.join(BASE_DIR, "Label_true_data_1")
 
 # Destination Directories (for separation)
 DEST_MISSING = os.path.join(BASE_DIR, "output_analyze", "Files_Missing_In_Label")
+DEST_LABEL_MISSING_PDF = os.path.join(
+    BASE_DIR, "output_analyze", "Files_Label_Missing_PDF"
+)
 DEST_DOCX = os.path.join(BASE_DIR, "output_analyze", "Files_Docx")
 
 # PDF Separation Directories
