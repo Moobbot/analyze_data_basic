@@ -16,7 +16,8 @@ def get_files_map_recursive(directory):
             rel_path = os.path.relpath(full_path, directory)
             # Use relative path without extension as key to match structure
             # e.g. "subdir/file1"
-            base_name = os.path.splitext(rel_path)[0]
+            # Normalize case to handle directory casing differences (Leuco vs leuco)
+            base_name = os.path.normcase(os.path.splitext(rel_path)[0])
 
             if base_name not in files_map:
                 files_map[base_name] = []
@@ -69,10 +70,9 @@ def copy_files():
         for rel_filename in dataset_map[base]:
             src = os.path.join(config.DATASET_DIR, rel_filename)
             # Flatten structure for destination or keep?
-            # Original script flattened it: dst = os.path.join(config.DEST_MISSING, filename)
-            # We will keep flattening but calculate basename from relative path
-            dst_filename = os.path.basename(rel_filename)
-            dst = os.path.join(config.DEST_MISSING, dst_filename)
+            # Keep relative structure
+            dst = os.path.join(config.DEST_MISSING, rel_filename)
+            utils.ensure_dir_exists(os.path.dirname(dst))
             try:
                 if os.path.exists(dst):
                     # If already copied in previous step, just delete source
@@ -89,8 +89,8 @@ def copy_files():
         for rel_filename in files:
             if rel_filename.lower().endswith(".docx"):
                 src = os.path.join(config.DATASET_DIR, rel_filename)
-                dst_filename = os.path.basename(rel_filename)
-                dst = os.path.join(config.DEST_DOCX, dst_filename)
+                dst = os.path.join(config.DEST_DOCX, rel_filename)
+                utils.ensure_dir_exists(os.path.dirname(dst))
 
                 # Check if it's one of the missing ones we just moved?
                 # If so, it won't exist in src anymore.
@@ -116,8 +116,8 @@ def copy_files():
     for base in missing_pdf_bases:
         for rel_filename in label_map[base]:
             src = os.path.join(config.LABEL_DIR, rel_filename)
-            dst_filename = os.path.basename(rel_filename)
-            dst = os.path.join(config.DEST_LABEL_MISSING_PDF, dst_filename)
+            dst = os.path.join(config.DEST_LABEL_MISSING_PDF, rel_filename)
+            utils.ensure_dir_exists(os.path.dirname(dst))
             try:
                 if os.path.exists(dst):
                     os.remove(src)
