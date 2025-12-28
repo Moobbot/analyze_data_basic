@@ -255,6 +255,8 @@ def match_date_formats(parsed_date, text_content, text_lower, date_format):
         parsed_date.strftime("%d.%m.%y"),  # "14.11.22"
         f"{day_no_zero}.{month_no_zero}.{parsed_date.year}",  # "3.4.2023"
         f"{day_no_zero}.{month_no_zero}.{year_2digit}",  # "3.4.23"
+        parsed_date.strftime("%Y.%m.%d"),  # "2025.04.11"
+        f"{parsed_date.year}.{month_no_zero}.{day_no_zero}",  # "2025.4.11"
     ]
 
     # Add Ordinal Date Formats (e.g., NOVEMBER25TH, 2022)
@@ -466,10 +468,28 @@ def get_best_match(value, text_content, field_name=""):
     text_normalized = normalize_whitespace(text_content)
 
     if val_normalized in text_normalized:
-        # Context is hard for multi-line, return empty or try to find containing line in normalized text
         return (
             "FOUND_NORMALIZED",
             1.0,
+            val_str,
+            date_format if is_date_valid else "",
+            "",
+        )
+
+    # 2.6. NORMALIZED + DASH + CASE INSENSITIVE
+    # Handle combination of multi-line split AND dash differences AND case differences
+    # e.g. "Theme - Trading" in JSON vs "Theme –\nTrading" in PDF
+    val_norm_clean = (
+        val_normalized.replace("–", "-").replace("—", "-").replace("\xad", "-")
+    )
+    text_norm_clean = (
+        text_normalized.replace("–", "-").replace("—", "-").replace("\xad", "-")
+    )
+
+    if val_norm_clean.lower() in text_norm_clean.lower():
+        return (
+            "FOUND_NORMALIZED_FUZZY",
+            0.95,
             val_str,
             date_format if is_date_valid else "",
             "",
