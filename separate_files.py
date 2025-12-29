@@ -4,27 +4,6 @@ import config
 import utils
 
 
-def get_files_map_recursive(directory):
-    files_map = {}
-    if not os.path.exists(directory):
-        print(f"Directory not found: {directory}")
-        return files_map
-
-    for root, _, files in os.walk(directory):
-        for f in files:
-            full_path = os.path.join(root, f)
-            rel_path = os.path.relpath(full_path, directory)
-            # Use relative path without extension as key to match structure
-            # e.g. "subdir/file1"
-            # Normalize case to handle directory casing differences (Leuco vs leuco)
-            base_name = os.path.normcase(os.path.splitext(rel_path)[0])
-
-            if base_name not in files_map:
-                files_map[base_name] = []
-            files_map[base_name].append(rel_path)
-    return files_map
-
-
 def copy_files():
     # Create destination directories
     utils.ensure_dir_exists(config.DEST_MISSING)
@@ -32,8 +11,8 @@ def copy_files():
     utils.ensure_dir_exists(config.DEST_LABEL_MISSING_PDF)
 
     print("Scanning files recursively...")
-    dataset_map = get_files_map_recursive(config.DATASET_DIR)
-    label_map = get_files_map_recursive(config.LABEL_DIR)
+    dataset_map = utils.get_files_map_recursive(config.DATASET_DIR)
+    label_map = utils.get_files_map_recursive(config.LABEL_DIR)
 
     dataset_bases = set(dataset_map.keys())
     label_bases = set(label_map.keys())

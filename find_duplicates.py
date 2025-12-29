@@ -11,24 +11,6 @@ DUPLICATE_LABELS_DIR = os.path.join(DUPLICATE_DIR, "labels")
 DUPLICATE_FILES_DIR = os.path.join(DUPLICATE_DIR, "files")
 
 
-def get_json_content_hash(json_path):
-    """
-    Read JSON, parse it, dump it with sorted keys to ensure canonical representation,
-    and return MD5 hash.
-    """
-    try:
-        with open(json_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        # Dump with sort_keys=True to ensure key order doesn't affect hash
-        # indent=0 to ignore whitespace differences if we were reading text,
-        # but since we parse and dump, formatting is normalized.
-        canonical_str = json.dumps(data, sort_keys=True)
-        return hashlib.md5(canonical_str.encode("utf-8")).hexdigest()
-    except Exception as e:
-        print(f"Error processing {json_path}: {e}")
-        return None
-
-
 def find_and_move_duplicates():
     print(">>> STARTING DUPLICATE DETECTION")
     print(f"Scanning directory: {config.LABEL_DIR}")
@@ -49,7 +31,7 @@ def find_and_move_duplicates():
 
     for i, filename in enumerate(json_files):
         file_path = os.path.join(config.LABEL_DIR, filename)
-        file_hash = get_json_content_hash(file_path)
+        file_hash = utils.get_json_content_hash(file_path)
 
         if file_hash:
             if file_hash not in content_map:

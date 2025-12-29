@@ -1,3 +1,11 @@
-PyPDF2==3.0.1
-pymupdf
-pdfplumber
+# Invoice Data Audit Tool - Dependencies
+
+# PDF Processing Libraries
+PyPDF2==3.0.1      # Basic PDF manipulation and metadata extraction
+pymupdf>=1.23.0    # Primary PDF text extraction library (fitz)
+pdfplumber>=0.10.0 # Alternative PDF processing with table extraction support
+
+# Note: All three PDF libraries are included for maximum compatibility
+# - pymupdf (fitz) is the primary extraction tool (fast and reliable)
+# - pdfplumber provides backup extraction and table support
+# - PyPDF2 handles basic PDF operations and metadata

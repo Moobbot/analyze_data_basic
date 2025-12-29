@@ -5,108 +5,6 @@ import config
 import utils
 
 
-def copy_file_and_label(filename, dest_folder_files, dest_folder_labels):
-    """
-    Copy both the PDF file and its corresponding JSON label to destination folders.
-
-    Args:
-        filename: Name of the PDF file
-        dest_folder_files: Destination folder for PDF files
-        dest_folder_labels: Destination folder for JSON label files
-
-    Returns:
-        Tuple of (pdf_copied: bool, label_copied: bool)
-    """
-    pdf_copied = False
-    label_copied = False
-
-    # Copy PDF file
-    source_pdf = os.path.join(config.DATASET_DIR, filename)
-    dest_pdf = os.path.join(dest_folder_files, filename)
-
-    # Ensure dest dir exists
-    dest_dir = os.path.dirname(dest_pdf)
-    utils.ensure_dir_exists(dest_dir)
-
-    if os.path.exists(source_pdf):
-        try:
-            shutil.copy2(source_pdf, dest_pdf)
-            pdf_copied = True
-        except Exception as e:
-            print(f"  Error copying PDF {filename}: {e}")
-
-    # Copy corresponding JSON label
-    label_filename = os.path.splitext(filename)[0] + ".json"
-    # Copy corresponding JSON label
-    label_filename = os.path.splitext(filename)[0] + ".json"
-    source_label = os.path.join(config.LABEL_DIR, label_filename)
-    dest_label = os.path.join(dest_folder_labels, label_filename)
-
-    # Ensure dest label dir exists
-    dest_label_dir = os.path.dirname(dest_label)
-    utils.ensure_dir_exists(dest_label_dir)
-
-    if os.path.exists(source_label):
-        try:
-            shutil.copy2(source_label, dest_label)
-            label_copied = True
-        except Exception as e:
-            print(f"  Error copying label {label_filename}: {e}")
-
-    return pdf_copied, label_copied
-
-
-def move_file_and_label(filename, dest_folder_files, dest_folder_labels):
-    """
-    Move both the PDF file and its corresponding JSON label to destination folders.
-
-    Args:
-        filename: Name of the PDF file
-        dest_folder_files: Destination folder for PDF files
-        dest_folder_labels: Destination folder for JSON label files
-
-    Returns:
-        Tuple of (pdf_moved: bool, label_moved: bool)
-    """
-    pdf_moved = False
-    label_moved = False
-
-    # Move PDF file
-    source_pdf = os.path.join(config.DATASET_DIR, filename)
-    dest_pdf = os.path.join(dest_folder_files, filename)
-
-    # Ensure dest dir exists
-    dest_dir = os.path.dirname(dest_pdf)
-    utils.ensure_dir_exists(dest_dir)
-
-    if os.path.exists(source_pdf):
-        try:
-            shutil.move(source_pdf, dest_pdf)
-            pdf_moved = True
-        except Exception as e:
-            print(f"  Error moving PDF {filename}: {e}")
-
-    # Move corresponding JSON label
-    label_filename = os.path.splitext(filename)[0] + ".json"
-    # Move corresponding JSON label
-    label_filename = os.path.splitext(filename)[0] + ".json"
-    source_label = os.path.join(config.LABEL_DIR, label_filename)
-    dest_label = os.path.join(dest_folder_labels, label_filename)
-
-    # Ensure dest label dir exists
-    dest_label_dir = os.path.dirname(dest_label)
-    utils.ensure_dir_exists(dest_label_dir)
-
-    if os.path.exists(source_label):
-        try:
-            shutil.move(source_label, dest_label)
-            label_moved = True
-        except Exception as e:
-            print(f"  Error moving label {label_filename}: {e}")
-
-    return pdf_moved, label_moved
-
-
 def extract_text_from_pdfs():
     print(">>> STARTING PDF EXTRACTION (using PyMuPDF)")
 
@@ -168,7 +66,7 @@ def extract_text_from_pdfs():
                     image_files.append(filename)
                     count_image_with_label += 1
                     # Move to image folder (PDF + Label)
-                    move_file_and_label(
+                    utils.move_file_and_label(
                         filename,
                         config.PDF_IMAGE_FILES_DIR,
                         config.PDF_IMAGE_LABELS_DIR,
@@ -176,7 +74,6 @@ def extract_text_from_pdfs():
                 else:
                     no_label_files.append(filename)
                     count_image_no_label += 1
-                    # Move to No Label folder (PDF only)
                     # Move to No Label folder (PDF only)
                     try:
                         dest_no_label = os.path.join(config.PDF_NO_LABEL_DIR, filename)
@@ -196,7 +93,7 @@ def extract_text_from_pdfs():
             error_files.append(f"{filename} | Error: {str(e)}")
             count_error += 1
             # Copy to error folder
-            copy_file_and_label(
+            utils.copy_file_and_label(
                 filename, config.PDF_ERROR_FILES_DIR, config.PDF_ERROR_LABELS_DIR
             )
 

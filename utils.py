@@ -218,3 +218,230 @@ def list_files_recursive(directory, extension):
                 rel_path = os.path.relpath(full_path, directory)
                 files.append(rel_path)
     return files
+
+
+def get_files_map_recursive(directory):
+    """
+    Scans a directory recursively and returns a dictionary mapping basenames
+    (relative path without extension) to a list of full relative filenames.
+
+    Normalizes case to handle directory casing differences.
+    Example: {'subdir/report': ['subdir/report.pdf', 'subdir/report.json']}
+
+    Args:
+        directory: Root directory to scan
+
+    Returns:
+        Dictionary mapping normalized base paths to list of relative file paths
+    """
+    files_map = {}
+    if not os.path.exists(directory):
+        print(f"Directory not found: {directory}")
+        return files_map
+
+    for root, _, files in os.walk(directory):
+        for f in files:
+            full_path = os.path.join(root, f)
+            rel_path = os.path.relpath(full_path, directory)
+            # Use relative path without extension as key to match structure
+            # Normalize case to handle directory casing differences (Leuco vs leuco)
+            base_name = os.path.normcase(os.path.splitext(rel_path)[0])
+
+            if base_name not in files_map:
+                files_map[base_name] = []
+            files_map[base_name].append(rel_path)
+    return files_map
+
+
+def copy_file_and_label(
+    filename,
+    dest_folder_files,
+    dest_folder_labels,
+    source_files_dir=None,
+    source_labels_dir=None,
+):
+    """
+    Copy both a file and its corresponding JSON label to destination folders.
+
+    Args:
+        filename: Name of the file (typically PDF)
+        dest_folder_files: Destination folder for files
+        dest_folder_labels: Destination folder for JSON label files
+        source_files_dir: Source directory for files (defaults to config.DATASET_DIR)
+        source_labels_dir: Source directory for labels (defaults to config.LABEL_DIR)
+
+    Returns:
+        Tuple of (file_copied: bool, label_copied: bool)
+    """
+    import config
+    import shutil
+
+    if source_files_dir is None:
+        source_files_dir = config.DATASET_DIR
+    if source_labels_dir is None:
+        source_labels_dir = config.LABEL_DIR
+
+    file_copied = False
+    label_copied = False
+
+    # Copy main file
+    source_file = os.path.join(source_files_dir, filename)
+    dest_file = os.path.join(dest_folder_files, filename)
+
+    # Ensure dest dir exists
+    ensure_dir_exists(os.path.dirname(dest_file))
+
+    if os.path.exists(source_file):
+        try:
+            shutil.copy2(source_file, dest_file)
+            file_copied = True
+        except Exception as e:
+            print(f"  Error copying file {filename}: {e}")
+
+    # Copy corresponding JSON label
+    label_filename = os.path.splitext(filename)[0] + ".json"
+    source_label = os.path.join(source_labels_dir, label_filename)
+    dest_label = os.path.join(dest_folder_labels, label_filename)
+
+    # Ensure dest label dir exists
+    ensure_dir_exists(os.path.dirname(dest_label))
+
+    if os.path.exists(source_label):
+        try:
+            shutil.copy2(source_label, dest_label)
+            label_copied = True
+        except Exception as e:
+            print(f"  Error copying label {label_filename}: {e}")
+
+    return file_copied, label_copied
+
+
+def move_file_and_label(
+    filename,
+    dest_folder_files,
+    dest_folder_labels,
+    source_files_dir=None,
+    source_labels_dir=None,
+):
+    """
+    Move both a file and its corresponding JSON label to destination folders.
+
+    Args:
+        filename: Name of the file (typically PDF)
+        dest_folder_files: Destination folder for files
+        dest_folder_labels: Destination folder for JSON label files
+        source_files_dir: Source directory for files (defaults to config.DATASET_DIR)
+        source_labels_dir: Source directory for labels (defaults to config.LABEL_DIR)
+
+    Returns:
+        Tuple of (file_moved: bool, label_moved: bool)
+    """
+    import config
+    import shutil
+
+    if source_files_dir is None:
+        source_files_dir = config.DATASET_DIR
+    if source_labels_dir is None:
+        source_labels_dir = config.LABEL_DIR
+
+    file_moved = False
+    label_moved = False
+
+    # Move main file
+    source_file = os.path.join(source_files_dir, filename)
+    dest_file = os.path.join(dest_folder_files, filename)
+
+    # Ensure dest dir exists
+    ensure_dir_exists(os.path.dirname(dest_file))
+
+    if os.path.exists(source_file):
+        try:
+            shutil.move(source_file, dest_file)
+            file_moved = True
+        except Exception as e:
+            print(f"  Error moving file {filename}: {e}")
+
+    # Move corresponding JSON label
+    label_filename = os.path.splitext(filename)[0] + ".json"
+    source_label = os.path.join(source_labels_dir, label_filename)
+    dest_label = os.path.join(dest_folder_labels, label_filename)
+
+    # Ensure dest label dir exists
+    ensure_dir_exists(os.path.dirname(dest_label))
+
+    if os.path.exists(source_label):
+        try:
+            shutil.move(source_label, dest_label)
+            label_moved = True
+        except Exception as e:
+            print(f"  Error moving label {label_filename}: {e}")
+
+    return file_moved, label_moved
+
+
+def move_file_safe(src, dest_folder):
+    """
+    Safely moves a file from src to dest_folder using copy + remove.
+    Handles missing source or existing destination gracefully.
+
+    Args:
+        src: Source file path
+        dest_folder: Destination folder path
+
+    Returns:
+        bool: True if file was successfully moved, False otherwise
+    """
+    import shutil
+
+    if not os.path.exists(src):
+        print(f"File not found: {src}")
+        return False
+
+    filename = os.path.basename(src)
+    dest_path = os.path.join(dest_folder, filename)
+
+    if os.path.exists(dest_path):
+        print(f"File already exists in destination: {dest_path}. Overwriting...")
+
+    try:
+        shutil.copy2(src, dest_path)
+        if os.path.exists(dest_path):
+            os.remove(src)
+            # Verify removal
+            if os.path.exists(src):
+                print(f"Warning: Failed to delete source file after copy: {src}")
+                return False
+            else:
+                print(f"Moved: {src} -> {dest_path}")
+                return True
+        else:
+            print(f"Error: Copy failed for {src}")
+            return False
+    except Exception as e:
+        print(f"Error moving {src}: {e}")
+        return False
+
+
+def get_json_content_hash(json_path):
+    """
+    Read JSON file, parse it, and return MD5 hash of canonical representation.
+    Uses sorted keys to ensure consistent hashing regardless of key order.
+
+    Args:
+        json_path: Path to JSON file
+
+    Returns:
+        str: MD5 hash of JSON content, or None if error occurs
+    """
+    import json
+    import hashlib
+
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # Dump with sort_keys=True to ensure key order doesn't affect hash
+        canonical_str = json.dumps(data, sort_keys=True)
+        return hashlib.md5(canonical_str.encode("utf-8")).hexdigest()
+    except Exception as e:
+        print(f"Error processing {json_path}: {e}")
+        return None

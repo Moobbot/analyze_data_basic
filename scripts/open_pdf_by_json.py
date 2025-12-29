@@ -81,8 +81,7 @@ if __name__ == "__main__":
 
     # List of files to process if no command line args are given
     default_file_list = [
-        "2025-GCP-012 - Daytona Investments Pte Ltd.json",
-        "2025-GCP-017 & 2025-GCP-018 - GIAPL (SGD) (Details).json",
+        "Cleanedge\PVSGD2504001 - RSPHL Invoice-CER - Rental - Apr 2025 (ok).json",
     ]
 
     files_to_process = []
