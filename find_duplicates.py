@@ -22,9 +22,7 @@ def find_and_move_duplicates():
     # Map: hash -> list of filenames
     content_map = {}
 
-    json_files = [
-        f for f in os.listdir(config.LABEL_DIR) if f.lower().endswith(".json")
-    ]
+    json_files = utils.list_files_recursive(config.LABEL_DIR, ".json")
     total_files = len(json_files)
 
     print(f"Found {total_files} JSON files. Calculating hashes...")
@@ -86,6 +84,7 @@ def find_and_move_duplicates():
                     src_json = os.path.join(config.LABEL_DIR, dupe_json)
                     dst_json = os.path.join(DUPLICATE_LABELS_DIR, dupe_json)
                     if os.path.exists(src_json):
+                        utils.ensure_dir_exists(os.path.dirname(dst_json))
                         shutil.move(src_json, dst_json)
                 except Exception as e:
                     f.write(f"      -> Lỗi di chuyển JSON: {e}\n")
@@ -99,6 +98,7 @@ def find_and_move_duplicates():
                     dst_pdf = os.path.join(DUPLICATE_FILES_DIR, pdf_filename)
 
                     if os.path.exists(src_pdf):
+                        utils.ensure_dir_exists(os.path.dirname(dst_pdf))
                         shutil.move(src_pdf, dst_pdf)
                         f.write(f"      -> Đã di chuyển PDF: {pdf_filename}\n")
                     else:
