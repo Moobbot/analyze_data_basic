@@ -15,7 +15,7 @@ def analyze_directories(
     report_lines.append("=" * 60)
 
     for category, path in config.DIRECTORIES.items():
-        if not os.path.exists(path):
+        if not path.exists():
             print(f"Error: Directory not found: {path}")
             continue
 
@@ -28,21 +28,29 @@ def analyze_directories(
         basename_map = defaultdict(list)
 
         try:
-            for f in os.listdir(path):
-                full_path = os.path.join(path, f)
-                if os.path.isfile(full_path):
+            # Use rglob to finding all files recursively
+            # Note: rglob("*") yields both files and directories, so we must check is_file()
+            for full_path in path.rglob("*"):
+                if full_path.is_file():
+                    f = full_path.name
+                    # file_list currently stores filename only, which might not be unique if recursive?
+                    # But statistics usually want total count.
+                    # Let's store relative path or just basename depending on need.
+                    # Report currently lists filenames. Duplicates check uses stem.
+                    # If duplicate base names exist in different folders, they will be grouped.
+
                     file_list.append(f)
-                    size = os.path.getsize(full_path)
+                    size = full_path.stat().st_size
                     sizes.append(size)
 
-                    ext = os.path.splitext(f)[1].lower()
+                    ext = full_path.suffix.lower()
 
-                    # Track non-PDFs (specifically for Dataset, but good general info)
+                    # Track non-PDFs (Dataset)
                     if category == "Dataset" and ext != ".pdf":
                         non_pdf_files.append(f)
 
-                    # Group by basename for duplicate check
-                    basename = os.path.splitext(f)[0]
+                    # Group by basename
+                    basename = full_path.stem
                     basename_map[basename].append(f)
 
                     all_files.append(
@@ -81,7 +89,7 @@ def analyze_directories(
                 f"   - Khoảng kích thước: {utils.format_size(min_size)} - {utils.format_size(max_size)}"
             )
 
-        # 3. Non-PDF Files (Dataset Only)
+        # 3. Non-PDF Files
         if category == "Dataset":
             report_lines.append(
                 f"\n3. Danh sách file KHÔNG PHẢI PDF ({len(non_pdf_files)} file):"
@@ -92,7 +100,7 @@ def analyze_directories(
             else:
                 report_lines.append("   (Không có)")
 
-        # 4. Duplicate Names (Same basename, different extensions)
+        # 4. Duplicate Names
         duplicates = {k: v for k, v in basename_map.items() if len(v) > 1}
         report_lines.append(
             f"\n4. Các file trùng tên (khác đuôi mở rộng): {len(duplicates)} nhóm"
@@ -117,7 +125,7 @@ def analyze_directories(
             writer.writeheader()
             for data in all_files:
                 writer.writerow(data)
-        print(f"Detailed statistics saved to {os.path.abspath(output_csv)}")
+        print(f"Detailed statistics saved to {output_csv}")
     except Exception as e:
         print(f"Error writing CSV: {e}")
 
@@ -125,7 +133,7 @@ def analyze_directories(
     try:
         with open(output_report, "w", encoding="utf-8") as f:
             f.write("\n".join(report_lines))
-        print(f"Summary report saved to {os.path.abspath(output_report)}")
+        print(f"Summary report saved to {output_report}")
     except Exception as e:
         print(f"Error writing Report: {e}")
 

@@ -80,170 +80,108 @@ PDF_IMAGE_DIR = "output_analyze/data_x/PDF_Image_Files"
 
 ```
 check_data_2025_12_19/
+├── main.py                      # Unifed Entry Point (Chạy toàn bộ pipeline)
 ├── config.py                    # Cấu hình chính
 ├── utils.py                     # Hàm tiện ích dùng chung
-├── main_pipeline.py             # Pipeline chính
+├── requirements.txt             # Dependencies
 │
-├── Core Modules/
-│   ├── analyze_data.py          # Thống kê file
-│   ├── compare_files.py         # So sánh Dataset vs Label
-│   ├── extract_pdf.py           # Trích xuất text từ PDF
-│   ├── verify_labels.py         # Đối soát dữ liệu
-│   ├── separate_files.py        # Phân loại file
-│   ├── find_duplicates.py       # Tìm file trùng lặp
-│   ├── filter_verification_results.py  # Lọc kết quả
-│   ├── filter_verified_labels.py       # Lọc nhãn đã verify
-│   ├── generate_final_reports.py       # Tạo báo cáo tổng kết
-│   └── merge_reports.py         # Gộp báo cáo
+├── core/                        # Core Logic Modules
+│   ├── __init__.py
+│   ├── analysis.py              # Thống kê file
+│   ├── cleaning.py              # Làm sạch dữ liệu JSON (số, ngày)
+│   ├── comparison.py            # So sánh Dataset vs Label
+│   ├── deduplication.py         # Tìm file trùng lặp
+│   ├── extraction.py            # Trích xuất text từ PDF
+│   ├── filtering.py             # Lọc kết quả verification & labels
+│   ├── separation.py            # Phân loại file (di chuyển file lỗi)
+│   └── verification.py          # Đối soát dữ liệu (Logic chính)
 │
-├── scripts/                     # Script tiện ích
+├── reports/                     # Reporting Modules
+│   ├── __init__.py
+│   ├── generator.py             # Tạo báo cáo Markdown/HTML
+│   └── merger.py                # Gộp báo cáo cuối cùng
+│
+├── scripts/                     # Standalone Utility Scripts
+│   ├── __init__.py
+│   ├── compare_pdf_libs.py      # So sánh thư viện PDF
+│   ├── convert_jsonl.py         # Convert JSONL
 │   ├── filter_comma_format.py   # Tìm format số có dấu phẩy
 │   ├── move_files_for_verification.py  # Di chuyển file cần verify
 │   └── open_pdf_by_json.py      # Mở PDF từ JSON path
 │
-├── data_x/                      # Dữ liệu nguồn
-│   ├── files/                   # PDF files
-│   └── labels/                  # JSON labels
+├── Datasets/                    # Dữ liệu nguồn (Cấu hình trong config.py)
+│   ├── data-all/dest/           # PDF files
+│   └── data-all/labels/         # JSON labels
 │
 └── output_analyze/              # Kết quả đầu ra
-    └── data_x/                  # Báo cáo và file phân loại
+    └── data-all/                # Báo cáo và file phân loại
 ```
 
 ## Hướng Dẫn Sử Dụng
 
-### Workflow Cơ Bản
+### Workflow Cơ Bản (Recommended)
 
-#### Bước 1: Chạy Pipeline Đầy Đủ
-
-Cách nhanh nhất để xử lý toàn bộ dữ liệu:
+Cách đơn giản nhất là chạy toàn bộ quy trình bằng `main.py`:
 
 ```bash
-python main_pipeline.py
+python main.py
 ```
 
-Pipeline sẽ tự động:
+Pipeline sẽ tự động thực hiện tuần tự các bước:
 
-1. Phân tích và thống kê file
-2. So sánh Dataset vs Label
-3. Di chuyển file lỗi/không hợp lệ
-4. Tạo báo cáo tổng hợp
+1.  **Cleaning**: Chuẩn hóa format số và ngày trong JSON.
+2.  **Analysis**: Thống kê file gốc.
+3.  **Extraction**: Trích xuất text từ PDF.
+4.  **Verification**: Đối soát dữ liệu (Fuzzy matching).
+5.  **Separation**: Di chuyển các file lỗi/thiếu.
+6.  **Filtering**: Lọc kết quả và tạo báo cáo chi tiết.
+7.  **Comparison**: So sánh tổng quan Dataset vs Label.
+8.  **Reporting**: Tổng hợp báo cáo cuối cùng.
 
-**Kết quả**:
+**Kết quả đầu ra** (trong thư mục `output_analyze/data-all/reports/` và `review/`):
 
-- `output_analyze/data_x/data_summary_report.txt` - Thống kê tổng quan
-- `output_analyze/data_x/file_differences.txt` - File thiếu/thừa
+- `final_summary.txt`: Báo cáo tổng hợp.
+- `label_verification_report.txt`: Chi tiết kết quả verify.
+- `file_differences.txt`: Danh sách file lệch.
+- `pdf_error_files.txt`, `pdf_image_files.txt`: Danh sách file lỗi/ảnh.
 
 ---
 
-#### Bước 2: Trích Xuất Text từ PDF
+### Chạy Từng Module Riêng Lẻ (Advanced)
+
+Nếu cần chạy riêng từng bước, bạn có thể gọi module qua flag `-m`:
+
+#### 1. Cleaning Only
 
 ```bash
-python extract_pdf.py
+python -m core.cleaning
 ```
 
-**Chức năng**:
-
-- Đọc text từ tất cả PDF trong `DATASET_DIR`
-- Tự động phân loại:
-  - ✅ PDF có text → Lưu vào `Extracted_Text/`
-  - ⚠️ PDF lỗi → Di chuyển vào `PDF_Error_Files/`
-  - 📷 PDF dạng ảnh → Di chuyển vào `PDF_Image_Files/`
-
-**Kết quả**:
-
-- `Extracted_Text/*.txt` - Text đã trích xuất
-- `output_analyze/data_x/pdf_error_files.txt` - Danh sách file lỗi
-- `output_analyze/data_x/pdf_image_files.txt` - Danh sách file ảnh
-
----
-
-#### Bước 3: Đối Soát Dữ Liệu
+#### 2. Extraction Only
 
 ```bash
-python verify_labels.py
+python -m core.extraction
 ```
 
-**Chức năng**:
+_Lưu ý: Cần chạy Extraction trước khi Verification._
 
-- So sánh từng trường trong JSON với text đã trích xuất
-- Sử dụng fuzzy matching thông minh
-- Xử lý đặc biệt cho ngày tháng và số tiền
-
-**Kết quả**:
-
-- `output_analyze/data_x/label_verification.csv` - Kết quả chi tiết từng trường
-- `output_analyze/data_x/label_verification_report.txt` - Thống kê tổng hợp
-
-**Các trạng thái**:
-
-- `FOUND` - Tìm thấy chính xác
-- `FOUND_DATE_ALT_FORMAT` - Tìm thấy với format ngày khác
-- `FOUND_CASE_INSENSITIVE` - Tìm thấy (không phân biệt hoa thường)
-- `SIMILAR` - Tương đồng (fuzzy match > 80%)
-- `MISSING` - Không tìm thấy
-- `N/A` - Trường rỗng trong JSON
-
----
-
-#### Bước 4: Lọc Kết Quả
+#### 3. Verification Only
 
 ```bash
-python filter_verification_results.py
+python -m core.verification
 ```
 
-**Chức năng**:
-
-- Tách kết quả thành các file riêng để dễ review
-
-**Kết quả**:
-
-- `label_verification_missing.csv` - Các trường KHÔNG tìm thấy (cần kiểm tra kỹ)
-- `label_verification_similar.csv` - Các trường TƯƠNG ĐỒNG (cần review nhanh)
-
----
-
-#### Bước 5: Tạo Báo Cáo Tổng Kết
+#### 4. Tìm File Trùng Lặp
 
 ```bash
-python generate_final_reports.py
+python -m core.deduplication
 ```
 
-**Kết quả**:
-
-- `General_Overview_Report.md` - Tổng quan toàn bộ hệ thống
-- `Detailed_Error_Report.md` - Chi tiết các lỗi và vấn đề
-
----
-
-### Workflow Nâng Cao
-
-#### Tìm File Trùng Lặp
+#### 5. Lọc Kết Quả Verify
 
 ```bash
-python find_duplicates.py
+python -m core.filtering
 ```
-
-Phát hiện các file JSON có nội dung giống hệt nhau (dựa trên MD5 hash).
-
-**Kết quả**:
-
-- Di chuyển file trùng vào `output_analyze/duplicates/`
-- Giữ lại 1 file gốc (theo thứ tự alphabet)
-
----
-
-#### Lọc Nhãn Đã Verify
-
-```bash
-python filter_verified_labels.py
-```
-
-Di chuyển các file đã verify hoàn toàn (tất cả trường đều FOUND) vào thư mục riêng.
-
-**Kết quả**:
-
-- `data_x/true/labels/` - JSON đã verify
-- `data_x/true/files/` - PDF tương ứng
 
 ## Các Script Tiện Ích
 

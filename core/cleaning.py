@@ -1,44 +1,31 @@
 import json
-import os
+import logging
 from pathlib import Path
 import config
 import utils
-import logging
 
 # Setup Logger
-LOG_FILE = "json_validation_log.txt"
-
-# Create a custom logger
 logger = logging.getLogger("json_cleaner")
 logger.setLevel(logging.INFO)
-
-# Create handlers
-c_handler = logging.StreamHandler()
-f_handler = logging.FileHandler(LOG_FILE, encoding="utf-8", mode="w")
-
-# Create formatters and add it to handlers
-formatter = logging.Formatter("%(message)s")
-c_handler.setFormatter(formatter)
-f_handler.setFormatter(formatter)
-
-# Add handlers to the logger
+# Prevent duplicate handlers if module is reloaded
 if not logger.handlers:
+    c_handler = logging.StreamHandler()
+    f_handler = logging.FileHandler(
+        "json_validation_log.txt", encoding="utf-8", mode="w"
+    )
+    formatter = logging.Formatter("%(message)s")
+    c_handler.setFormatter(formatter)
+    f_handler.setFormatter(formatter)
     logger.addHandler(c_handler)
     logger.addHandler(f_handler)
 
-
 # Define validations
-# KEY: (Expected Type, Auto-Convert?)
-# Types: "DATE", "STRING", "FLOAT"
 SCHEMA = {
-    # Date validation
     "Date": ("DATE", False),
-    # String validation
     "Customer": ("STRING", False),
     "Supplier": ("STRING", False),
     "Currency": ("STRING", False),
     "text": ("STRING", False),
-    # Numeric cleaning (Float conversion)
     "Amount (before tax)": ("FLOAT", True),
     "Tax amount": ("FLOAT", True),
     "Amount (after GST)": ("FLOAT", True),
@@ -51,12 +38,7 @@ SCHEMA = {
 
 
 def validate_and_clean_value(key, value, expected_type, auto_convert):
-    """
-    Validates and optionally cleans a value based on type.
-    Returns: (is_valid, new_value, modified)
-    """
     if value is None:
-        # Decide if None is allowed. For now, let's assume valid but no change.
         return True, value, False
 
     if expected_type == "DATE":
@@ -75,15 +57,12 @@ def validate_and_clean_value(key, value, expected_type, auto_convert):
             return True, value, False
 
         if auto_convert and isinstance(value, str):
-            # Remove commas and try convert
             clean_str = value.replace(",", "")
             try:
                 new_val = float(clean_str)
                 return True, new_val, True
             except ValueError:
                 pass
-
-        # If we reach here, it's not a valid float or conversion failed
         return False, value, False
 
     return True, value, False
@@ -99,10 +78,6 @@ def process_file(file_path):
 
     modified = False
     errors = []
-
-    # Handle both Dict and List of Dicts (just in case, though usually invoice is Dict)
-    # The previous code assumed data is Dict. User snippet shows "text" is at top level?
-    # User said "Date", "Customer", etc.
 
     if isinstance(data, dict):
         items_to_check = [data]
@@ -149,8 +124,8 @@ def process_file(file_path):
     return False
 
 
-def main():
-    target_dir = Path(config.LABEL_DIR)
+def clean_json_files():
+    target_dir = config.LABEL_DIR
 
     if not target_dir.exists():
         logger.info(f"Directory not found: {target_dir}")
@@ -161,7 +136,6 @@ def main():
     count = 0
     updated_count = 0
 
-    # Recursively find all json files
     files = list(target_dir.rglob("*.json"))
     logger.info(f"Found {len(files)} JSON files.")
 
@@ -171,8 +145,8 @@ def main():
         count += 1
 
     logger.info(f"Finished. Processed {count} files. Updated {updated_count} files.")
-    logger.info(f"Log saved to {LOG_FILE}")
+    logger.info(f"Log saved to json_validation_log.txt")
 
 
 if __name__ == "__main__":
-    main()
+    clean_json_files()

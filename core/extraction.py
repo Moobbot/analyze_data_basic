@@ -9,14 +9,14 @@ def extract_text_from_pdfs():
     print(">>> STARTING PDF EXTRACTION (using PyMuPDF)")
 
     # Ensure output directory exists
-    utils.ensure_dir_exists(config.EXTRACTED_TEXT_DIR)
+    config.EXTRACTED_TEXT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Ensure PDF Separation Directories exist
-    os.makedirs(config.PDF_ERROR_FILES_DIR, exist_ok=True)
-    os.makedirs(config.PDF_ERROR_LABELS_DIR, exist_ok=True)
-    os.makedirs(config.PDF_IMAGE_FILES_DIR, exist_ok=True)
-    os.makedirs(config.PDF_IMAGE_LABELS_DIR, exist_ok=True)
-    os.makedirs(config.PDF_NO_LABEL_DIR, exist_ok=True)
+    config.PDF_ERROR_FILES_DIR.mkdir(parents=True, exist_ok=True)
+    config.PDF_ERROR_LABELS_DIR.mkdir(parents=True, exist_ok=True)
+    config.PDF_IMAGE_FILES_DIR.mkdir(parents=True, exist_ok=True)
+    config.PDF_IMAGE_LABELS_DIR.mkdir(parents=True, exist_ok=True)
+    config.PDF_NO_LABEL_DIR.mkdir(parents=True, exist_ok=True)
 
     # Stats
     count_success = 0
@@ -29,7 +29,7 @@ def extract_text_from_pdfs():
     no_label_files = []
 
     # Get List of PDF files
-    if not os.path.exists(config.DATASET_DIR):
+    if not config.DATASET_DIR.exists():
         print(f"Error: Dataset directory not found: {config.DATASET_DIR}")
         return
 
@@ -38,17 +38,17 @@ def extract_text_from_pdfs():
     print(f"Found {total_files} PDF files in {config.DATASET_DIR}")
 
     for i, filename in enumerate(files):
-        pdf_path = os.path.join(config.DATASET_DIR, filename)
+        pdf_path = config.DATASET_DIR / filename
         txt_filename = os.path.splitext(filename)[0] + ".txt"
-        txt_path = os.path.join(config.EXTRACTED_TEXT_DIR, txt_filename)
+        txt_path = config.EXTRACTED_TEXT_DIR / txt_filename
 
-        # Ensure txt output subdirectory exists
-        utils.ensure_dir_exists(os.path.dirname(txt_path))
+        # Ensure txt output subdirectory exists (if filename includes subdirs)
+        txt_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Check if label exists
         label_filename = os.path.splitext(filename)[0] + ".json"
-        label_path = os.path.join(config.LABEL_DIR, label_filename)
-        has_label = os.path.exists(label_path)
+        label_path = config.LABEL_DIR / label_filename
+        has_label = label_path.exists()
 
         try:
             text_content = ""
@@ -76,8 +76,8 @@ def extract_text_from_pdfs():
                     count_image_no_label += 1
                     # Move to No Label folder (PDF only)
                     try:
-                        dest_no_label = os.path.join(config.PDF_NO_LABEL_DIR, filename)
-                        utils.ensure_dir_exists(os.path.dirname(dest_no_label))
+                        dest_no_label = config.PDF_NO_LABEL_DIR / filename
+                        dest_no_label.parent.mkdir(parents=True, exist_ok=True)
                         shutil.move(pdf_path, dest_no_label)
                     except Exception as e:
                         print(f"  Error moving PDF {filename} to No Label: {e}")
@@ -137,7 +137,3 @@ def extract_text_from_pdfs():
     print(f"Error files → {config.PDF_ERROR_FILES_DIR}")
     print(f"Image files (w/ Label) → {config.PDF_IMAGE_FILES_DIR}")
     print(f"No Label files → {config.PDF_NO_LABEL_DIR}")
-
-
-if __name__ == "__main__":
-    extract_text_from_pdfs()

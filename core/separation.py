@@ -6,9 +6,9 @@ import utils
 
 def copy_files():
     # Create destination directories
-    utils.ensure_dir_exists(config.DEST_MISSING)
-    utils.ensure_dir_exists(config.DEST_DOCX)
-    utils.ensure_dir_exists(config.DEST_LABEL_MISSING_PDF)
+    config.DEST_MISSING.mkdir(parents=True, exist_ok=True)
+    config.DEST_DOCX.mkdir(parents=True, exist_ok=True)
+    config.DEST_LABEL_MISSING_PDF.mkdir(parents=True, exist_ok=True)
 
     print("Scanning files recursively...")
     dataset_map = utils.get_files_map_recursive(config.DATASET_DIR)
@@ -17,7 +17,7 @@ def copy_files():
     dataset_bases = set(dataset_map.keys())
     label_bases = set(label_map.keys())
 
-    # Pre-calculate specific bases for correct matching (Align with verify_labels.py)
+    # Pre-calculate specific bases
     dataset_pdf_bases = {
         base
         for base, files in dataset_map.items()
@@ -37,7 +37,6 @@ def copy_files():
     )
 
     # 1. Identify Missing Files (In Dataset but NOT in Label)
-    # Ensure they don't have matching JSON (strict check)
     missing_bases = dataset_bases - label_json_bases
     count_missing_moved = 0
 
@@ -47,14 +46,11 @@ def copy_files():
 
     for base in missing_bases:
         for rel_filename in dataset_map[base]:
-            src = os.path.join(config.DATASET_DIR, rel_filename)
-            # Flatten structure for destination or keep?
-            # Keep relative structure
-            dst = os.path.join(config.DEST_MISSING, rel_filename)
-            utils.ensure_dir_exists(os.path.dirname(dst))
+            src = config.DATASET_DIR / rel_filename
+            dst = config.DEST_MISSING / rel_filename
+            dst.parent.mkdir(parents=True, exist_ok=True)
             try:
-                if os.path.exists(dst):
-                    # If already copied in previous step, just delete source
+                if dst.exists():
                     os.remove(src)
                 else:
                     shutil.move(src, dst)
@@ -67,17 +63,15 @@ def copy_files():
     for base, files in dataset_map.items():
         for rel_filename in files:
             if rel_filename.lower().endswith(".docx"):
-                src = os.path.join(config.DATASET_DIR, rel_filename)
-                dst = os.path.join(config.DEST_DOCX, rel_filename)
-                utils.ensure_dir_exists(os.path.dirname(dst))
+                src = config.DATASET_DIR / rel_filename
+                dst = config.DEST_DOCX / rel_filename
+                dst.parent.mkdir(parents=True, exist_ok=True)
 
-                # Check if it's one of the missing ones we just moved?
-                # If so, it won't exist in src anymore.
-                if not os.path.exists(src):
+                if not src.exists():
                     continue
 
                 try:
-                    if os.path.exists(dst):
+                    if dst.exists():
                         os.remove(src)
                     else:
                         shutil.move(src, dst)
@@ -86,7 +80,6 @@ def copy_files():
                     print(f"Error moving {rel_filename}: {e}")
 
     # 3. Identify Missing PDFs (In Label but NOT in Dataset)
-    # Strict check: Label exists (JSON) but PDF does not exist in Dataset
     missing_pdf_bases = label_json_bases - dataset_pdf_bases
     count_label_missing_pdf = 0
 
@@ -94,11 +87,11 @@ def copy_files():
 
     for base in missing_pdf_bases:
         for rel_filename in label_map[base]:
-            src = os.path.join(config.LABEL_DIR, rel_filename)
-            dst = os.path.join(config.DEST_LABEL_MISSING_PDF, rel_filename)
-            utils.ensure_dir_exists(os.path.dirname(dst))
+            src = config.LABEL_DIR / rel_filename
+            dst = config.DEST_LABEL_MISSING_PDF / rel_filename
+            dst.parent.mkdir(parents=True, exist_ok=True)
             try:
-                if os.path.exists(dst):
+                if dst.exists():
                     os.remove(src)
                 else:
                     shutil.move(src, dst)

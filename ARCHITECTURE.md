@@ -8,45 +8,59 @@ Invoice Data Audit Tool là hệ thống xử lý và kiểm tra chất lượng
 
 ```mermaid
 graph TD
-    A[PDF Files + JSON Labels] --> B[analyze_data.py]
-    A --> C[compare_files.py]
-    B --> D[Data Statistics]
-    C --> E[File Differences]
+    A[PDF Files + JSON Labels] --> M[main.py Pipeline]
 
-    A --> F[separate_files.py]
-    F --> G[Valid Files]
-    F --> H[Invalid Files]
+    subgraph Core Modules
+        M --> B[core/cleaning.py]
+        M --> C[core/analysis.py]
+        M --> D[core/extraction.py]
+        M --> E[core/verification.py]
+        M --> F[core/separation.py]
+        M --> G[core/comparison.py]
+        M --> H[core/filtering.py]
+    end
 
-    G --> I[extract_pdf.py]
-    I --> J[Extracted Text]
-    I --> K[Error PDFs]
-    I --> L[Image PDFs]
+    subgraph Reports
+        G --> R1[core/comparison stats]
+        E --> R2[verification reports]
+        M --> I[reports/merger.py]
+    end
 
-    J --> M[verify_labels.py]
-    A --> M
-    M --> N[Verification Results CSV]
+    B --> J[Cleaned JSON]
+    D --> K[Extracted Text]
+    D --> L[Error/Image PDFs]
 
-    N --> O[filter_verification_results.py]
-    O --> P[Missing Fields]
-    O --> Q[Similar Fields]
-
-    N --> R[generate_final_reports.py]
-    R --> S[Final Reports MD]
+    E --> R2
+    H --> N[Filtered Results]
+    I --> O[Final Summary Report]
 ```
 
 ## Module Architecture
 
-### Core Layer
+### Main Entry Point
+
+#### 0. Pipeline Controller (`main.py`)
+
+**Trách nhiệm**: Điều phối toàn bộ quy trình xử lý tuần tự.
+
+**Workflow**:
+
+1. `core.cleaning`: Chuẩn hóa dữ liệu JSON đầu vào.
+2. `core.analysis`: Thống kê sơ bộ.
+3. `core.extraction`: Trích xuất text (PyMuPDF).
+4. `core.verification`: Đối soát Logic Fuzzy Match.
+5. `core.separation`: Di chuyển file lỗi/thiếu.
+6. `core.filtering`: Lọc kết quả và phân loại file đã verify.
+7. `core.comparison`: So sánh tổng hợp Dataset vs Label.
+8. `reports.merger`: Tổng hợp báo cáo cuối cùng.
+
+---
+
+### Core Layer (`core/`)
 
 #### 1. Configuration Module (`config.py`)
 
-**Trách nhiệm**: Quản lý tất cả đường dẫn và cấu hình hệ thống
-
-**Thiết kế**:
-
-- Sử dụng `os.path.join` để đảm bảo cross-platform
-- Tất cả paths đều relative từ `BASE_DIR`
-- Tự động phát hiện thư mục gốc qua `sys.argv[0]`
+**Trách nhiệm**: Quản lý tất cả đường dẫn và cấu hình hệ thống (Sử dụng `pathlib`).
 
 **Key Constants**:
 
@@ -58,204 +72,115 @@ REVIEW_DIR        # Output reports
 EXTRACTED_TEXT_DIR # Extracted text files
 ```
 
----
-
 #### 2. Utilities Module (`utils.py`)
 
-**Trách nhiệm**: Cung cấp hàm tiện ích dùng chung
-
-**Nhóm chức năng**:
-
-1. **File Operations**:
-
-   - `get_files_map(directory)` - Map basename → filenames (single level)
-   - `get_files_map_recursive(directory)` - Map basename → filenames (recursive)
-   - `list_files_recursive(directory, extension)` - List files by extension
-   - `ensure_dir_exists(directory)` - Create directory if not exists
-
-2. **File Movement**:
-
-   - `copy_file_and_label()` - Copy PDF + JSON pair
-   - `move_file_and_label()` - Move PDF + JSON pair
-   - `move_file_safe()` - Safe file move with verification
-
-3. **Date Processing**:
-
-   - `parse_date_dmy(date_str)` - Parse "DD Mon YYYY" format
-   - `validate_date(date_str)` - Validate and parse multiple formats
-
-4. **Data Processing**:
-   - `format_size(size_bytes)` - Convert bytes to human readable
-   - `read_file(path)` - Read text file with error handling
-   - `get_json_content_hash(json_path)` - MD5 hash of JSON content
+**Trách nhiệm**: Cung cấp hàm tiện ích dùng chung (File Ops, Date/Text Processing).
 
 ---
 
-### Processing Layer
+### Processing Layer (`core/`)
 
-#### 3. Analysis Module (`analyze_data.py`)
+#### 3. Analysis Module (`core/analysis.py`)
 
 **Input**: Directories (Dataset, Label)
 **Output**: CSV statistics, Text report
 
 **Workflow**:
 
-```
 1. Scan directories
 2. Collect file metadata (size, extension, basename)
 3. Calculate statistics (count, size range, duplicates)
 4. Generate report
-```
 
-**Key Functions**:
-
-- `analyze_directories(output_csv, output_report)`
-
----
-
-#### 4. Comparison Module (`compare_files.py`)
+#### 4. Comparison Module (`core/comparison.py`)
 
 **Input**: Dataset and Label directories
 **Output**: File differences report
 
 **Workflow**:
 
-```
 1. Get file maps from both directories
-2. Extract basenames (without extension)
-3. Find set differences
-4. Generate detailed report with file info
-```
+2. Extract basenames
+3. Find set differences (Missing in Label vs Missing in Dataset)
+4. Generate detailed report
 
-**Key Functions**:
-
-- `compare_directories(output_file)`
-
----
-
-#### 5. Extraction Module (`extract_pdf.py`)
+#### 5. Extraction Module (`core/extraction.py`)
 
 **Input**: PDF files
-**Output**: Text files, Error reports
+**Output**: Text files, Error reports, Image PDF separation
 
 **Workflow**:
 
-```
 1. List all PDFs recursively
-2. For each PDF:
-   a. Extract text using PyMuPDF
-   b. Check if text is meaningful (> 50 chars)
-   c. Classify: Text PDF / Image PDF / Error PDF
-   d. Move to appropriate folder
-3. Generate reports
-```
+2. Extract text using `fitz` (PyMuPDF)
+3. Classify: Text PDF / Image PDF / Error PDF
+4. Move to appropriate folder (`Extracted_Text`, `PDF_Image_Files`, `PDF_Error_Files`)
 
-**Classification Logic**:
-
-- Text PDF: `len(text) >= 50` → Extract to `Extracted_Text/`
-- Image PDF: `len(text) < 50` + has label → Move to `PDF_Image_Files/`
-- No Label: `len(text) < 50` + no label → Move to `PDF_No_Label/`
-- Error: Exception during extraction → Copy to `PDF_Error_Files/`
-
-**Key Functions**:
-
-- `extract_text_from_pdfs()`
-
----
-
-#### 6. Verification Module (`verify_labels.py`)
+#### 6. Verification Module (`core/verification.py`)
 
 **Input**: JSON labels, Extracted text files
 **Output**: Verification CSV, Statistics report
 
 **Workflow**:
 
-```
-1. Load JSON label
-2. Flatten nested structure
-3. For each field:
-   a. Determine field type (date/numeric/text)
-   b. Apply appropriate matching algorithm
-   c. Record result and confidence
-4. Write results to CSV
-5. Generate statistics
-```
+1. Load JSON and Text
+2. For each field: Match Value vs Text (Fuzzy, Date, Numeric)
+3. Record Status (FOUND, SIMILAR, MISSING)
+4. Generate `label_verification_report.txt` stats
 
-**Matching Algorithms**: See [Matching Algorithms](#matching-algorithms) section
+#### 7. Cleaning Module (`core/cleaning.py`)
 
-**Key Functions**:
-
-- `verify_labels()`
-- `get_best_match(value, text_content, field_name)`
-- `is_numeric_match(value_str, text_content)`
-- `match_date_formats(parsed_date, text_content, ...)`
-
----
-
-### Filtering Layer
-
-#### 7. Result Filter (`filter_verification_results.py`)
-
-**Input**: Verification CSV
-**Output**: Filtered CSVs (Missing, Similar)
+**Input**: JSON files
+**Output**: Cleaned JSON files, Log
 
 **Workflow**:
 
-```
-1. Read verification CSV
-2. Filter by Status column
-3. Write to separate files
-```
+1. Scan JSON files
+2. Convert string numbers to float/int (handling commas)
+3. Validate Date formats
+4. Save changes if any
 
----
+#### 8. Separation Module (`core/separation.py`)
 
-#### 8. Label Filter (`filter_verified_labels.py`)
-
-**Input**: Verification CSV
-**Output**: Verified files in separate folder
+**Input**: File Maps
+**Output**: Organized directories (Missing files, Docx files)
 
 **Workflow**:
 
-```
-1. Group results by filename
-2. Check if ALL fields are FOUND
-3. Move verified PDF + JSON to Label_true/
-```
+1. Identify files missing labels or PDFs
+2. Move valid/invalid files to respective folders
 
----
-
-### Utility Layer
-
-#### 9. Duplicate Finder (`find_duplicates.py`)
+#### 9. Deduplication Module (`core/deduplication.py`)
 
 **Input**: JSON labels
 **Output**: Duplicate report, Moved duplicates
 
 **Workflow**:
 
-```
-1. Calculate MD5 hash for each JSON (canonical form)
-2. Group by hash
-3. Keep first file (alphabetically), move others
-```
+1. Hash JSON content (MD5)
+2. Identify duplicates
+3. Consolidate to unique set
 
----
+#### 10. Filtering Module (`core/filtering.py`)
 
-#### 10. File Separator (`separate_files.py`)
-
-**Input**: Dataset and Label directories
-**Output**: Separated files by category
+**Input**: Verification CSV
+**Output**: Filtered CSVs, Verified File Set
 
 **Workflow**:
 
-```
-1. Build file maps (recursive)
-2. Identify:
-   - Files in Dataset without Label
-   - DOCX files
-   - Labels without PDF
-3. Move to appropriate folders
-```
+1. Split results into Missing/Similar CSVs
+2. (Optional) Move fully verified files to `Label_true` folder
+
+---
+
+### Reporting Layer (`reports/`)
+
+#### 11. Generator & Merger (`reports/generator.py`, `reports/merger.py`)
+
+**Trách nhiệm**:
+
+- `generator.py`: Tạo báo cáo Markdown tổng quan và chi tiết lỗi.
+- `merger.py`: Gộp các file text report thành `final_summary.txt`.
 
 ---
 
