@@ -141,6 +141,25 @@ def validate_date(date_str):
         ("%Y-%m-%d", "YYYY-MM-DD"),
         ("%d-%m-%Y", "DD-MM-YYYY"),
         ("%m/%d/%Y", "MM/DD/YYYY"),
+        # Extended formats
+        ("%d %b %Y", "DD Mon YYYY"),  # 03 Oct 2023
+        ("%d %B %Y", "DD Month YYYY"),  # 03 October 2023
+        ("%Y/%m/%d", "YYYY/MM/DD"),  # 2023/07/07
+        ("%B %d, %Y", "Month DD, YYYY"),  # October 03, 2023
+        ("%d %b, %Y", "DD Mon, YYYY"),  # 03 Oct, 2023
+        ("%d-%b-%Y", "DD-Mon-YYYY"),  # 03-Oct-2023
+        ("%d-%b-%y", "DD-Mon-YY"),  # 03-Oct-23
+        ("%d-%B %Y", "DD-Month YYYY"),  # 30-April 2023
+        ("%d-%B %y", "DD-Month YY"),  # 30-April 23
+        ("%d-%B-%Y", "DD-Month-YYYY"),  # 30-April-2023
+        ("%d-%B-%y", "DD-Month-YY"),  # 30-April-23
+        ("%d/%m/%y", "DD/MM/YY"),  # 30/05/25
+        ("%m/%d/%y", "MM/DD/YY"),  # 05/30/25
+        ("%d.%m.%Y", "DD.MM.YYYY"),  # 14.11.2022
+        ("%d.%m.%y", "DD.MM.YY"),  # 14.11.22
+        ("%Y.%m.%d", "YYYY.MM.DD"),  # 2025.04.11
+        ("%y/%m/%d", "YY/MM/DD"),  # 23/01/18 (Year/Month/Day)
+        ("%y-%m-%d", "YY-MM-DD"),  # 23-01-18 (Year-Month-Day)
     ]
 
     for fmt, fmt_name in formats_to_try:
