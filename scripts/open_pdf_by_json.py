@@ -1,5 +1,7 @@
 import os
 import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 
 
@@ -58,30 +60,33 @@ def find_and_open_files(json_path):
             f"Error: Could not find corresponding PDF for '{base_name}' in {dataset_dir}"
         )
 
-    # 3. Open the corresponding text file in output_analyze/Extracted_Text_data_1
+    # 3. Find and open the corresponding text file
     txt_filename = base_name + ".txt"
-    # Assuming output_analyze is relative to the script's directory or current working directory
-    # We can use os.getcwd() or relative to this script file if needed.
-    # For now, let's try relative to CWD as the user usually runs from root of project.
-    # Or better, relative to the script's location.
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    txt_path = os.path.join(
-        script_dir, "output_analyze", "Extracted_Text_data_1", txt_filename
-    )
+    txt_path = None
+    extracted_text_dir = config.EXTRACTED_TEXT_DIR
 
-    if os.path.exists(txt_path):
+    print(f"Searching for Text file for '{base_name}' in: {extracted_text_dir}")
+
+    if os.path.exists(extracted_text_dir):
+        for root, dirs, files in os.walk(extracted_text_dir):
+            if txt_filename in files:
+                txt_path = os.path.join(root, txt_filename)
+                break
+
+    if txt_path:
+        print(f"Found Text file: {txt_path}")
         open_file_default(txt_path)
     else:
-        print(f"Warning: Text file not found at {txt_path}")
+        print(f"Warning: Text file not found for '{base_name}' in {extracted_text_dir}")
 
 
 if __name__ == "__main__":
     # Default values compatible with user's typical usage pattern
-    json_input_dir = "Datasets_edit-2025-12-23-Hoang/Data"
+    json_input_dir = os.path.join(config.LABEL_DIR, "data_1")
 
     # List of files to process if no command line args are given
     default_file_list = [
-        "Cleanedge\PVSGD2504001 - RSPHL Invoice-CER - Rental - Apr 2025 (ok).json",
+        "Inv-SI092139-C102337.json",
     ]
 
     files_to_process = []
