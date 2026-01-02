@@ -232,10 +232,34 @@ def get_best_match(value, text_content, field_name=""):
     # Check date
     is_date_valid, parsed_date, date_format = utils.validate_date(val_str)
 
-    # 1. Exact Match
+    # 1. Exact Match Check
+    # Distinguish between Whole Word Match (FOUND) and Substring Match (FOUND_SUBSTRING)
     if val_str in text_content:
-        context = find_context_line(val_str, text_content)
-        return "FOUND", 1.0, val_str, date_format if is_date_valid else "", context
+        # Check for whole word match using regex
+        # Escape special regex characters in val_str
+        val_pattern = re.escape(val_str)
+        # Look for the value surrounded by word boundaries (or start/end of string)
+        # Note: \b works for alphanumerics. For symbols, it depends.
+        # Let's try a safer word boundary approach that includes whitespace/punctuation
+
+        # Simple regex word boundary check first
+        whole_word_pattern = f"(?<![a-zA-Z0-9]){val_pattern}(?![a-zA-Z0-9])"
+
+        if re.search(whole_word_pattern, text_content):
+            context = find_context_line(val_str, text_content)
+            return "FOUND", 1.0, val_str, date_format if is_date_valid else "", context
+        else:
+            # Found but NOT as a whole word (e.g. "RSPHL" in "RSPHL2510")
+            # Wait, user example: "RSPHL/2510/00" in "RSPHL/2510/002"
+            # 0 vs 2 are digits, so \b or alphanumeric check works.
+            context = find_context_line(val_str, text_content)
+            return (
+                "FOUND_SUBSTRING",
+                0.95,
+                val_str,
+                date_format if is_date_valid else "",
+                context,
+            )
 
     text_lower = text_content.lower()
     val_lower = val_str.lower()
@@ -376,6 +400,7 @@ def verify_labels():
         "Missing": 0,
         "Date Fields": 0,
         "Date Alt Format Found": 0,
+        "Found Substring": 0,
     }
 
     results = []
@@ -429,6 +454,8 @@ def verify_labels():
             elif status == "FOUND_DATE_ALT_FORMAT":
                 stats["Date Alt Format Found"] += 1
                 stats["Found"] += 1
+            elif status == "FOUND_SUBSTRING":
+                stats["Found Substring"] += 1
             elif status == "SIMILAR":
                 stats["Similar"] += 1
             elif status == "MISSING":
@@ -498,6 +525,7 @@ def verify_labels():
         report_lines.append(
             f"   - Date Alternate Format: {stats['Date Alt Format Found']}"
         )
+        report_lines.append(f"   - Substring Match: {stats['Found Substring']}")
         report_lines.append("-" * 60)
         report_lines.append(f"2. SIMILAR (Needs Review): {stats['Similar']}")
         report_lines.append(f"3. MISSING (Not Found): {stats['Missing']}")
