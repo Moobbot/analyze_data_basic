@@ -82,12 +82,10 @@ def find_and_open_files(json_path):
 
 if __name__ == "__main__":
     # Default values compatible with user's typical usage pattern
-    json_input_dir = os.path.join(config.LABEL_DIR, "data_1")
+    json_input_dir = os.path.join(config.LABEL_DIR, "Cleanedge")
 
     # List of files to process if no command line args are given
-    default_file_list = [
-        "Inv-SI092139-C102337.json",
-    ]
+    default_file_list = ["Inv-SI092139-C102337.json"]
 
     files_to_process = []
 

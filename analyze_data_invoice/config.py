@@ -6,16 +6,16 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 
 # Source Directories
-DATASET_DIR = BASE_DIR / "Datasets" / "data-all" / "files"
-LABEL_DIR = BASE_DIR / "Datasets" / "data-all" / "labels"
+DATASET_DIR = BASE_DIR / "Datasets" / "data-all-check-v2" / "files"
+LABEL_DIR = BASE_DIR / "Datasets" / "data-all-check-v2" / "labels"
 
 DIRECTORIES = {"Dataset": DATASET_DIR, "Label": LABEL_DIR}
 
 # Verified Labels Output
-LABEL_TRUE_DIR = BASE_DIR / "data-all" / "true"
+LABEL_TRUE_DIR = BASE_DIR / "Datasets" / "data-all-check-v2" / "true"
 
 # Output Directory
-REVIEW_DIR = BASE_DIR / "output_analyze" / "data-all"
+REVIEW_DIR = BASE_DIR / "output_analyze" / "data-all-check-v2"
 
 # Destination Directories (for separation)
 DEST_MISSING = REVIEW_DIR / "Files_Missing_In_Label"
