@@ -1,25 +1,15 @@
 import os
 import json
-import difflib
 import csv
-import shutil
-import math
-import re
-from datetime import datetime
 import config
-import utils
 
-# Fields that should use date-specific matching logic
-DATE_RELATED_FIELDS = [
-    "date",
-    "invoice date",
-    "due date",
-    "payment date",
-    "contract date",
-]
+# Import from lib modules
+from lib.logger import get_logger
+from lib.matchers import get_best_match
+from lib.constants import DATE_RELATED_FIELDS, PERCENTAGE_FIELDS, DEFAULT_BATCH_SIZE
 
-# Fields that should use percentage normalization
-PERCENTAGE_FIELDS = ["tax type", "tax rate", "gst", "vat", "gst rate"]
+# Setup logger
+logger = get_logger(__name__)
 
 
 def flatten_json(y):
@@ -41,196 +31,14 @@ def flatten_json(y):
     return out
 
 
-def detect_date_format_from_text(text_content):
-    date_pattern = r"\b(\d{1,2})/(\d{1,2})/(\d{2,4})\b"
-    matches = re.findall(date_pattern, text_content)
-    for first, second, year in matches:
-        first_num = int(first)
-        second_num = int(second)
-        if first_num > 12:
-            return "DD/MM"
-        if second_num > 12:
-            return "MM/DD"
-    return "UNKNOWN"
+# Note: get_best_match and helper functions are now imported from lib.matchers
+#       This significantly reduces code duplication and improves maintainability
 
 
-def is_numeric_match(value_str, text_content):
-    try:
-        target_val = float(value_str)
-    except (ValueError, TypeError):
-        return False, None
-
-    normalized_text = (
-        text_content.replace("\u2212", "-")
-        .replace("\u2013", "-")
-        .replace("\u2014", "-")
-        .replace("\u00ad", "-")
-    )
-
-    pattern = r"\(?\s*-?\s*[\d,]+(?:\.\d+)?\s*\)?"
-    for match in re.finditer(pattern, normalized_text):
-        original_text = match.group(0)
-        is_accounting_negative = False
-        clean_text = original_text.strip()
-        if clean_text.startswith("(") and clean_text.endswith(")"):
-            is_accounting_negative = True
-            clean_text = clean_text[1:-1]
-
-        clean_text = clean_text.replace(",", "").replace(" ", "")
-        if not any(c.isdigit() for c in clean_text):
-            continue
-
-        try:
-            candidate_val = float(clean_text)
-            if is_accounting_negative:
-                candidate_val = -candidate_val
-            if math.isclose(target_val, candidate_val, rel_tol=1e-9, abs_tol=1e-9):
-                return True, original_text
-        except ValueError:
-            continue
-    return False, None
-
-
-def normalize_whitespace(text):
-    text = text.replace("\n", " ").replace("\r", " ").replace("\t", " ")
-    text = re.sub(r"\s+", " ", text)
-    return text.strip()
-
-
-def find_context_line(value, text_content, case_insensitive=False):
-    if not value or not text_content:
-        return ""
-    lines = text_content.splitlines()
-    val_check = value.lower() if case_insensitive else value
-    for line in lines:
-        line_check = line.lower() if case_insensitive else line
-        if val_check in line_check:
-            return line.strip()
-    return ""
-
-
-def match_date_formats(parsed_date, text_content, text_lower, date_format):
-    text_lower = text_lower.replace("\xad", "-")
-
-    # Standard Python formats
-    alternate_formats = [
-        parsed_date.strftime("%d %b %Y"),
-        parsed_date.strftime("%d %B %Y"),
-        parsed_date.strftime("%d/%m/%Y"),
-        parsed_date.strftime("%Y-%m-%d"),
-        parsed_date.strftime("%Y/%m/%d"),
-        parsed_date.strftime("%d-%m-%Y"),
-        parsed_date.strftime("%m/%d/%Y"),
-        parsed_date.strftime("%B %d, %Y"),
-        parsed_date.strftime("%d %b, %Y"),
-        parsed_date.strftime("%d-%b-%Y"),
-        parsed_date.strftime("%d-%b-%y"),
-        parsed_date.strftime("%d-%B %Y"),
-        parsed_date.strftime("%d-%B %y"),
-        parsed_date.strftime("%d-%B-%Y"),
-        parsed_date.strftime("%d-%B-%y"),
-        parsed_date.strftime("%d/%m/%y"),
-        parsed_date.strftime("%m/%d/%y"),
-    ]
-
-    for alt_format in alternate_formats:
-        if alt_format.lower() in text_lower:
-            return "FOUND_DATE_ALT_FORMAT", 0.95, alt_format, date_format
-
-    # Custom formats
-    day_no_zero = str(parsed_date.day)
-    month_no_zero = str(parsed_date.month)
-    year_2digit = str(parsed_date.year)[2:]
-    detected_format = detect_date_format_from_text(text_content)
-
-    additional_formats = [
-        f"{day_no_zero} {parsed_date.strftime('%b')} {parsed_date.year}",
-        f"{day_no_zero}-{parsed_date.strftime('%b')} {parsed_date.year}",
-        f"{day_no_zero}/{month_no_zero}/{parsed_date.year}",
-        f"{month_no_zero}/{day_no_zero}/{parsed_date.year}",
-        f"{parsed_date.year}/{month_no_zero}/{day_no_zero}",
-        f"{day_no_zero}-{month_no_zero}-{parsed_date.year}",
-        f"{month_no_zero}-{day_no_zero}-{parsed_date.year}",
-        f"{day_no_zero}-{parsed_date.strftime('%b')}-{parsed_date.year}",
-        f"{parsed_date.strftime('%b')} {day_no_zero}, {parsed_date.year}",
-        f"{parsed_date.strftime('%B')} {day_no_zero}, {parsed_date.year}",
-        parsed_date.strftime("%d.%m.%Y"),
-        parsed_date.strftime("%d.%m.%y"),
-        f"{day_no_zero}.{month_no_zero}.{parsed_date.year}",
-        f"{day_no_zero}.{month_no_zero}.{year_2digit}",
-        parsed_date.strftime("%Y.%m.%d"),
-        f"{parsed_date.year}.{month_no_zero}.{day_no_zero}",
-    ]
-
-    # Ordinal Suffixes
-    def get_ordinal_suffix(day):
-        if 11 <= day <= 13:
-            return "th"
-        last_digit = day % 10
-        return {1: "st", 2: "nd", 3: "rd"}.get(last_digit, "th")
-
-    suffix = get_ordinal_suffix(parsed_date.day)
-    # Add ordinal formats
-    additional_formats.append(
-        f"{parsed_date.strftime('%B')}{parsed_date.day}{suffix}, {parsed_date.year}"
-    )
-    additional_formats.append(
-        f"{parsed_date.strftime('%B')} {parsed_date.day}{suffix}, {parsed_date.year}"
-    )
-    additional_formats.append(
-        f"{parsed_date.day}{suffix} {parsed_date.strftime('%b')} {parsed_date.year}"
-    )
-    additional_formats.append(
-        f"{parsed_date.day}{suffix} {parsed_date.strftime('%B')} {parsed_date.year}"
-    )
-    additional_formats.append(
-        f"{parsed_date.strftime('%b')} {parsed_date.day}{suffix},{parsed_date.year}"
-    )
-    additional_formats.append(
-        f"{parsed_date.strftime('%B')} {parsed_date.day}{suffix},{parsed_date.year}"
-    )
-
-    # Compact formats
-    additional_formats.append(parsed_date.strftime("%d%b%Y"))
-    additional_formats.append(parsed_date.strftime("%d%B%Y"))
-
-    # 2-digit year slash formats based on detected format
-    if detected_format == "DD/MM":
-        additional_formats.append(f"{day_no_zero}/{month_no_zero}/{year_2digit}")
-    elif detected_format == "MM/DD":
-        additional_formats.append(f"{month_no_zero}/{day_no_zero}/{year_2digit}")
-    else:
-        additional_formats.append(f"{day_no_zero}/{month_no_zero}/{year_2digit}")
-        additional_formats.append(f"{month_no_zero}/{day_no_zero}/{year_2digit}")
-
-    for alt_format in additional_formats:
-        if alt_format.lower() in text_lower:
-            return "FOUND_DATE_ALT_FORMAT", 0.95, alt_format, date_format
-
-    if detected_format == "UNKNOWN":
-        return (
-            "CHECK_DATE",
-            0,
-            "Date format ambiguous - needs manual verification",
-            date_format,
-        )
-
-    return None
-
-
-def get_best_match(value, text_content, field_name=""):
-    if value is None or (isinstance(value, str) and value.strip() == ""):
-        return "N/A", 0, "", "", ""
-    val_str = str(value).strip()
-
-    # Currency Alias
-    if "currency" in field_name.lower() and val_str == "USD":
-        if "US$" in text_content:
-            context = find_context_line("US$", text_content)
-            return "FOUND_ALIAS", 1.0, "US$", "", context
-
-    # Check date
-    is_date_valid, parsed_date, date_format = utils.validate_date(val_str)
+# Keep this function for backward compatibility if needed elsewhere
+def _legacy_get_best_match(value, text_content, field_name=""):
+    """Legacy wrapper - use lib.matchers.get_best_match instead."""
+    return get_best_match(value, text_content, field_name)
 
     # 1. Exact Match Check
     # Distinguish between Whole Word Match (FOUND) and Substring Match (FOUND_SUBSTRING)
@@ -354,7 +162,7 @@ def get_best_match(value, text_content, field_name=""):
 
 
 def check_file_consistency():
-    print(">>> CHECKING FILE CONSISTENCY")
+    logger.info("Checking file consistency")
     if not config.LABEL_DIR.exists():
         return
     if not config.DATASET_DIR.exists():
@@ -377,17 +185,17 @@ def check_file_consistency():
             f.write("Labels missing PDF:\n" + "\n".join(sorted(json_only)) + "\n\n")
         if pdf_only:
             f.write("PDFs missing Label:\n" + "\n".join(sorted(pdf_only)) + "\n")
-    print(f"Consistency report: {report_path}")
+    logger.info(f"Consistency report saved to: {report_path}")
 
 
 def verify_labels():
-    print(">>> STARTING LABEL VERIFICATION")
+    logger.info("Starting label verification")
     check_file_consistency()
     config.REVIEW_DIR.mkdir(parents=True, exist_ok=True)
 
     json_files = list(config.LABEL_DIR.rglob("*.json"))
     total_files = len(json_files)
-    print(f"Found {total_files} JSON label files.")
+    logger.info(f"Found {total_files} JSON label files")
 
     stats = {
         "Total Fields": 0,
@@ -477,8 +285,8 @@ def verify_labels():
                 }
             )
 
-        if (i + 1) % 100 == 0:
-            print(f"Processed {i+1}/{total_files}...")
+        if (i + 1) % DEFAULT_BATCH_SIZE == 0:
+            logger.info(f"Processed {i+1}/{total_files} files")
 
     # Save CSV
     try:
@@ -498,9 +306,9 @@ def verify_labels():
             )
             writer.writeheader()
             writer.writerows(results)
-        print(f"Results saved to {config.VERIFY_REPORT_CSV}")
+        logger.info(f"Results saved to {config.VERIFY_REPORT_CSV}")
     except Exception as e:
-        print(f"Error saving CSV: {e}")
+        logger.error(f"Error saving CSV: {e}")
 
     # Generate Text Report
     try:
@@ -535,13 +343,15 @@ def verify_labels():
 
         with open(config.VERIFY_REPORT_TXT, "w", encoding="utf-8") as f:
             f.write("\n".join(report_lines))
-        print(f"Text report saved to {config.VERIFY_REPORT_TXT}")
+        logger.info(f"Text report saved to {config.VERIFY_REPORT_TXT}")
 
     except Exception as e:
-        print(f"Error writing text report: {e}")
+        logger.error(f"Error writing text report: {e}")
 
     if json_errors:
-        print(f"Found {len(json_errors)} JSON errors. Logged in report.")
+        logger.warning(
+            f"Found {len(json_errors)} JSON errors. Check report for details."
+        )
 
 
 if __name__ == "__main__":

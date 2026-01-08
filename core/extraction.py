@@ -2,11 +2,16 @@ import os
 import shutil
 import fitz  # PyMuPDF
 import config
-import utils
+from lib.file_utils import move_file_and_label, copy_file_and_label
+from lib.logger import get_logger
+from lib.constants import MIN_TEXT_LENGTH_FOR_VALID_PDF
+
+# Setup logger
+logger = get_logger(__name__)
 
 
 def extract_text_from_pdfs():
-    print(">>> STARTING PDF EXTRACTION (using PyMuPDF)")
+    logger.info("Starting PDF extraction using PyMuPDF")
 
     # Ensure output directory exists
     config.EXTRACTED_TEXT_DIR.mkdir(parents=True, exist_ok=True)
@@ -30,12 +35,15 @@ def extract_text_from_pdfs():
 
     # Get List of PDF files
     if not config.DATASET_DIR.exists():
-        print(f"Error: Dataset directory not found: {config.DATASET_DIR}")
+        logger.error(f"Dataset directory not found: {config.DATASET_DIR}")
         return
 
-    files = utils.list_files_recursive(config.DATASET_DIR, ".pdf")
+    # Import list_files_recursive from backward-compatible utils
+    from lib.file_utils import list_files_recursive
+
+    files = list_files_recursive(config.DATASET_DIR, ".pdf")
     total_files = len(files)
-    print(f"Found {total_files} PDF files in {config.DATASET_DIR}")
+    logger.info(f"Found {total_files} PDF files in {config.DATASET_DIR}")
 
     for i, filename in enumerate(files):
         pdf_path = config.DATASET_DIR / filename
@@ -60,13 +68,13 @@ def extract_text_from_pdfs():
             # Analyze extracted text
             clean_text = text_content.strip()
 
-            # HEURISTIC: If text is empty or very short (< 50 chars), assume it's an image/scanned PDF
-            if not clean_text or len(clean_text) < 50:
+            # HEURISTIC: If text is empty or very short, assume it's an image/scanned PDF
+            if not clean_text or len(clean_text) < MIN_TEXT_LENGTH_FOR_VALID_PDF:
                 if has_label:
                     image_files.append(filename)
                     count_image_with_label += 1
                     # Move to image folder (PDF + Label)
-                    utils.move_file_and_label(
+                    move_file_and_label(
                         filename,
                         config.PDF_IMAGE_FILES_DIR,
                         config.PDF_IMAGE_LABELS_DIR,
@@ -80,7 +88,7 @@ def extract_text_from_pdfs():
                         dest_no_label.parent.mkdir(parents=True, exist_ok=True)
                         shutil.move(pdf_path, dest_no_label)
                     except Exception as e:
-                        print(f"  Error moving PDF {filename} to No Label: {e}")
+                        logger.error(f"Error moving PDF {filename} to No Label: {e}")
             else:
                 count_success += 1
 
@@ -89,16 +97,16 @@ def extract_text_from_pdfs():
                 f_out.write(text_content)
 
         except Exception as e:
-            print(f"Error reading {filename}: {e}")
+            logger.error(f"Error reading {filename}: {e}")
             error_files.append(f"{filename} | Error: {str(e)}")
             count_error += 1
             # Copy to error folder
-            utils.copy_file_and_label(
+            copy_file_and_label(
                 filename, config.PDF_ERROR_FILES_DIR, config.PDF_ERROR_LABELS_DIR
             )
 
         if (i + 1) % 100 == 0:
-            print(f"Processed {i + 1}/{total_files} files...")
+            logger.info(f"Processed {i + 1}/{total_files} files")
 
     # Write Report Files
     # 1. Error Files
