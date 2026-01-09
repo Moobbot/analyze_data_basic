@@ -4,8 +4,8 @@ import pandas as pd
 import glob
 
 # Configuration
-DATA_DIR = r"d:\Work\Clients\AIRC\product\ACPA\check_data_table\datasets\labels\Trade_Confirmation"
-OUTPUT_FILE = r"d:\Work\Clients\AIRC\product\ACPA\check_data_table\merged_trade_confirmations.xlsx"
+DATA_DIR = "datasets/labels/Trade_Confirmation"
+OUTPUT_FILE = "output/analysis/trade_confirmations.xlsx"
 
 # List of columns based on the user's request
 COLUMNS = [

@@ -3,7 +3,7 @@ import os
 import glob
 
 # Correct path to the folder
-folder_path = r"d:\Work\Clients\AIRC\product\ACPA\check_data_table\datasets\labels\Trade_Confirmation"
+folder_path = "datasets/labels/Trade_Confirmation"
 
 
 def fix_duplicate_keys_in_file(file_path):

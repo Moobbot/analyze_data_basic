@@ -1,8 +1,8 @@
 import os
 import sys
 
-# Base Directory
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Base Directory: project root (parent of lib)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Source Directories
 # DATASET_DIR = os.path.join(BASE_DIR, "datasets", "Dataset_Invoice_one_page")

@@ -2,12 +2,12 @@ import os
 import json
 
 folders = [
-    r"d:\Work\Clients\AIRC\product\ACPA\check_data_table\datasets\labels\Account_Statements",
-    r"d:\Work\Clients\AIRC\product\ACPA\check_data_table\datasets\labels\Contact_Note",
-    r"d:\Work\Clients\AIRC\product\ACPA\check_data_table\datasets\labels\Contact_Note_backup",
-    r"d:\Work\Clients\AIRC\product\ACPA\check_data_table\datasets\labels\Dividend",
-    r"d:\Work\Clients\AIRC\product\ACPA\check_data_table\datasets\labels\FX-FT",
-    r"d:\Work\Clients\AIRC\product\ACPA\check_data_table\datasets\labels\Others_Template",
+    "datasets/labels/Account_Statements",
+    "datasets/labels/Contact_Note",
+    "datasets/labels/Contact_Note_backup",
+    "datasets/labels/Dividend",
+    "datasets/labels/FX-FT",
+    "datasets/labels/Others_Template",
 ]
 
 for folder in folders:

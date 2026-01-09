@@ -166,8 +166,12 @@ def check_transaction_type(data, text_content, result_log):
     field = "Transaction Type"
     val = data.get(field)
 
+    # Log JSON value
+    result_log["Transaction Type (JSON)"] = val or ""
+
     if not val:
         result_log["Transaction Type"] = "MISSING"
+        result_log["Transaction Type (Text)"] = ""
         return
 
     val_upper = val.upper()
@@ -183,23 +187,31 @@ def check_transaction_type(data, text_content, result_log):
     text_lower = utils.normalize_text(text_content)
     found = False
 
+    matched_kw = ""
     for kw in keywords:
         if kw.lower() in text_lower:
             found = True
+            matched_kw = kw
             break
 
     if found:
         result_log["Transaction Type"] = "PASS"
+        result_log["Transaction Type (Text)"] = matched_kw
     else:
         result_log["Transaction Type"] = f"FAIL: Keywords not found"
+        result_log["Transaction Type (Text)"] = ""
 
 
 def check_date_field(field_name, data, text_content, result_log):
     """Validates date fields using enhanced matching logic."""
     val = data.get(field_name)
 
+    # Log JSON value
+    result_log[f"{field_name} (JSON)"] = val or ""
+
     if not val:
         result_log[field_name] = "MISSING"
+        result_log[f"{field_name} (Text)"] = ""
         return
 
     # 1. Validate Format (Must be MM/dd/yyyy)
@@ -207,6 +219,7 @@ def check_date_field(field_name, data, text_content, result_log):
         val_date = datetime.strptime(val, "%m/%d/%Y")
     except ValueError:
         result_log[field_name] = f"FAIL: Invalid Format '{val}'"
+        result_log[f"{field_name} (Text)"] = ""
         return
 
     # 2. Check using match_date_formats
@@ -218,14 +231,19 @@ def check_date_field(field_name, data, text_content, result_log):
     if match_result:
         # Match result is a tuple/list: (Status, Score, FoundFormat, OriginalFormat)
         status_code = match_result[0]
+        found_format = match_result[2]
         if status_code == "FOUND_DATE_ALT_FORMAT":
-            result_log[field_name] = f"PASS"
+            result_log[field_name] = "PASS"
+            result_log[f"{field_name} (Text)"] = found_format
         elif status_code == "CHECK_DATE":
             result_log[field_name] = "WARN: Ambiguous Date Format"
+            result_log[f"{field_name} (Text)"] = ""
         else:
-            result_log[field_name] = "PASS"  # Treat other non-None as pass?
+            result_log[field_name] = "PASS"
+            result_log[f"{field_name} (Text)"] = found_format if found_format else ""
     else:
         result_log[field_name] = f"WARN: Date '{val}' not found in text"
+        result_log[f"{field_name} (Text)"] = ""
 
     # 3. Check for Date Keywords Context (Optional enhancement)
     date_keywords = validation_config.DATE_KEYWORDS.get(field_name, [])
@@ -247,6 +265,9 @@ def check_date_field(field_name, data, text_content, result_log):
 def check_isin(data, result_log):
     """Validates Securities ID (ISIN) length."""
     sec_id = data.get("Securities ID")
+
+    # Log JSON value
+    result_log["ISIN (JSON)"] = sec_id or ""
 
     if sec_id:
         if isinstance(sec_id, str) and len(sec_id) == 12:

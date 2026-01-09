@@ -4,10 +4,15 @@
 # ==============================================================================
 
 import os
+import sys
+
+# Add parent directory to path to access common_lib
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, parent_dir)
+
 import json
 import csv
-import config
-import validation_logic  # Import the new validation logic module
+from lib import config, validation_logic
 
 # ==============================================================================
 # Helper Functions (File Loading)
@@ -28,26 +33,14 @@ def load_text(json_path):
     """Loads corresponding extracted text content for a given JSON path."""
     try:
         base_dir = os.path.dirname(json_path)
+        parent_dir_name = os.path.basename(base_dir)  # e.g., Trade_Confirmation
         filename = os.path.basename(json_path)
         name_no_ext = os.path.splitext(filename)[0]
 
-        # Determine text path based on known directory structure
-        if "datasets\\true\\labels" in json_path:
-            txt_path = json_path.replace(
-                "datasets\\true\\labels", "output_analyze\\datasets\\extracted_text"
-            )
-            txt_path = txt_path.replace(".json", ".txt")
-        elif "datasets/true/labels" in json_path:
-            txt_path = json_path.replace(
-                "datasets/true/labels", "output_analyze/datasets/extracted_text"
-            )
-            txt_path = txt_path.replace(".json", ".txt")
-        else:
-            # Fallback logic
-            parent_dir = os.path.basename(base_dir)  # e.g., Trade_Confirmation
-            txt_path = os.path.join(
-                config.EXTRACTED_TEXT_DIR, parent_dir, name_no_ext + ".txt"
-            )
+        # Use fixed extracted_text directory with the label subfolder
+        txt_path = os.path.join(
+            config.EXTRACTED_TEXT_DIR, parent_dir_name, name_no_ext + ".txt"
+        )
 
         if os.path.exists(txt_path):
             with open(txt_path, "r", encoding="utf-8") as f:
@@ -261,13 +254,25 @@ def process_folder(input_folder, output_csv, output_report=None):
             "File",
             "Text Status",
             "Transaction Type",
+            "Transaction Type (JSON)",
+            "Transaction Type (Text)",
             "Trade Date",
+            "Trade Date (JSON)",
+            "Trade Date (Text)",
             "Settlement Date",
+            "Settlement Date (JSON)",
+            "Settlement Date (Text)",
             "ISIN Status",
+            "ISIN (JSON)",
+            "ISIN (Text)",
             "Generic Errors",
             "Error",
         ]
         try:
+            # Ensure output directory exists
+            out_dir = os.path.dirname(output_csv)
+            if out_dir:
+                os.makedirs(out_dir, exist_ok=True)
             with open(output_csv, "w", newline="", encoding="utf-8") as csvfile:
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()
@@ -280,7 +285,10 @@ def process_folder(input_folder, output_csv, output_report=None):
 
         # Generate Text Report
         if not output_report:
-            output_report = output_csv.replace(".csv", "_report.txt")
+            base = os.path.splitext(os.path.basename(output_csv))[0]
+            output_report = os.path.join(
+                os.path.dirname(output_csv), f"{base}_report.txt"
+            )
         generate_report(results, output_report)
 
     else:
@@ -293,7 +301,8 @@ def process_folder(input_folder, output_csv, output_report=None):
 
 if __name__ == "__main__":
     # Define default paths
-    default_input = r"d:\Work\Clients\AIRC\product\ACPA\check_data_table\datasets\labels\Trade_Confirmation"
-    default_output = r"d:\Work\Clients\AIRC\product\ACPA\check_data_table\validation_check_result.csv"
+    default_input = "datasets/labels/Trade_Confirmation"
+    reports_dir = os.path.join(os.path.dirname(__file__), "output", "reports")
+    default_output = os.path.join(reports_dir, "validation_check_result.csv")
 
     process_folder(default_input, default_output)
