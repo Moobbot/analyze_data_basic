@@ -5,10 +5,10 @@ import uuid
 # --- CẤU HÌNH ĐƯỜNG DẪN (Bạn chỉnh sửa phần này) ---
 
 # 1. Đường dẫn folder gốc chứa các folder con (Credit Note, Invoice...)
-INPUT_ROOT_FOLDER = "Datasets/data-all/labels"
+INPUT_ROOT_FOLDER = "datasets/data-all/labels"
 
 # 2. Tên file kết quả đầu ra
-OUTPUT_FILE = "Datasets/data-all/acpa_invoice_sft_dataset_generated.jsonl"
+OUTPUT_FILE = "datasets/data-all/acpa_invoice_sft_dataset_generated.jsonl"
 
 # 3. Đường dẫn giả định cho ảnh trong server training (Prefix)
 # Code sẽ ghép: IMAGE_PREFIX + Tên_File.png

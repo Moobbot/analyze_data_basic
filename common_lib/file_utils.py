@@ -12,34 +12,23 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 
-def format_size(size_bytes: float) -> str:
-    """
-    Convert bytes to human readable string (B, KB, MB, GB, TB).
-
-    Args:
-        size_bytes: Size in bytes
-
-    Returns:
-        Formatted size string
-    """
-    for unit in ["B", "KB", "MB", "GB"]:
-        if size_bytes < 1024:
-            return f"{size_bytes:.2f} {unit}"
-        size_bytes /= 1024
-    return f"{size_bytes:.2f} TB"
-
-
 def ensure_dir_exists(directory: Path) -> bool:
     """
     Create the directory if it does not exist.
 
     Args:
-        directory: Path to directory
+        directory: Path to directory (can be Path object or string)
 
     Returns:
         True if directory exists or was created, False on error
+
+    Examples:
+        >>> ensure_dir_exists(Path("output/data"))
+        True
     """
     try:
+        if isinstance(directory, str):
+            directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
         return True
     except Exception as e:
@@ -52,11 +41,17 @@ def read_file(path: Path) -> str:
     Read a text file and return its content as a stripped string.
 
     Args:
-        path: Path to file
+        path: Path to file (can be Path object or string)
 
     Returns:
         File content or error message
+
+    Examples:
+        >>> content = read_file("data.txt")
     """
+    if isinstance(path, str):
+        path = Path(path)
+
     if not path.exists():
         return f"[Error: File not found - {path}]"
     try:
@@ -74,11 +69,19 @@ def get_files_map(directory: Path) -> Dict[str, List[str]]:
     Example: {'report': ['report.pdf', 'report.docx']}
 
     Args:
-        directory: Directory to scan
+        directory: Directory to scan (can be Path object or string)
 
     Returns:
         Dictionary mapping basenames to list of filenames
+
+    Examples:
+        >>> files = get_files_map("data/")
+        >>> print(files.get("invoice_001"))
+        ['invoice_001.pdf', 'invoice_001.json']
     """
+    if isinstance(directory, str):
+        directory = Path(directory)
+
     files_map: Dict[str, List[str]] = {}
 
     if not directory.exists():
@@ -107,11 +110,14 @@ def get_files_map_recursive(directory: Path) -> Dict[str, List[str]]:
     Example: {'subdir/report': ['subdir/report.pdf', 'subdir/report.json']}
 
     Args:
-        directory: Root directory to scan
+        directory: Root directory to scan (can be Path object or string)
 
     Returns:
         Dictionary mapping normalized base paths to list of relative file paths
     """
+    if isinstance(directory, str):
+        directory = Path(directory)
+
     files_map: Dict[str, List[str]] = {}
 
     if not directory.exists():
@@ -138,12 +144,20 @@ def list_files_recursive(directory: Path, extension: str) -> List[str]:
     List files with specific extension recursively (all levels).
 
     Args:
-        directory: Directory to search
+        directory: Directory to search (can be Path object or string)
         extension: File extension (e.g., '.pdf')
 
     Returns:
         List of relative paths from the directory
+
+    Examples:
+        >>> pdf_files = list_files_recursive("data/", ".pdf")
+        >>> print(len(pdf_files))
+        42
     """
+    if isinstance(directory, str):
+        directory = Path(directory)
+
     files: List[str] = []
 
     if not directory.exists():
@@ -159,15 +173,47 @@ def list_files_recursive(directory: Path, extension: str) -> List[str]:
     return files
 
 
+def get_json_content_hash(json_path: Path) -> Optional[str]:
+    """
+    Read JSON file, parse it, and return MD5 hash of canonical representation.
+
+    Uses sorted keys to ensure consistent hashing regardless of key order.
+
+    Args:
+        json_path: Path to JSON file (can be Path object or string)
+
+    Returns:
+        MD5 hash of JSON content, or None if error occurs
+
+    Examples:
+        >>> hash_val = get_json_content_hash("data.json")
+    """
+    if isinstance(json_path, str):
+        json_path = Path(json_path)
+
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # Dump with sort_keys=True to ensure key order doesn't affect hash
+        canonical_str = json.dumps(data, sort_keys=True)
+        return hashlib.md5(canonical_str.encode("utf-8")).hexdigest()
+    except Exception as e:
+        print(f"Error processing {json_path}: {e}")
+        return None
+
+
 def copy_file_and_label(
     filename: str,
     dest_folder_files: Path,
     dest_folder_labels: Path,
-    source_files_dir: Optional[Path] = None,
-    source_labels_dir: Optional[Path] = None,
+    source_files_dir: Path,
+    source_labels_dir: Path,
 ) -> Tuple[bool, bool]:
     """
     Copy both a file and its corresponding JSON label to destination folders.
+
+    Note: This is a generic version. Module-specific versions should handle
+    their own config imports.
 
     Args:
         filename: Name of the file (typically PDF)
@@ -179,12 +225,14 @@ def copy_file_and_label(
     Returns:
         Tuple of (file_copied: bool, label_copied: bool)
     """
-    import config
-
-    if source_files_dir is None:
-        source_files_dir = config.DATASET_DIR
-    if source_labels_dir is None:
-        source_labels_dir = config.LABEL_DIR
+    if isinstance(dest_folder_files, str):
+        dest_folder_files = Path(dest_folder_files)
+    if isinstance(dest_folder_labels, str):
+        dest_folder_labels = Path(dest_folder_labels)
+    if isinstance(source_files_dir, str):
+        source_files_dir = Path(source_files_dir)
+    if isinstance(source_labels_dir, str):
+        source_labels_dir = Path(source_labels_dir)
 
     file_copied = False
     label_copied = False
@@ -225,11 +273,14 @@ def move_file_and_label(
     filename: str,
     dest_folder_files: Path,
     dest_folder_labels: Path,
-    source_files_dir: Optional[Path] = None,
-    source_labels_dir: Optional[Path] = None,
+    source_files_dir: Path,
+    source_labels_dir: Path,
 ) -> Tuple[bool, bool]:
     """
     Move both a file and its corresponding JSON label to destination folders.
+
+    Note: This is a generic version. Module-specific versions should handle
+    their own config imports.
 
     Args:
         filename: Name of the file (typically PDF)
@@ -241,12 +292,14 @@ def move_file_and_label(
     Returns:
         Tuple of (file_moved: bool, label_moved: bool)
     """
-    import config
-
-    if source_files_dir is None:
-        source_files_dir = config.DATASET_DIR
-    if source_labels_dir is None:
-        source_labels_dir = config.LABEL_DIR
+    if isinstance(dest_folder_files, str):
+        dest_folder_files = Path(dest_folder_files)
+    if isinstance(dest_folder_labels, str):
+        dest_folder_labels = Path(dest_folder_labels)
+    if isinstance(source_files_dir, str):
+        source_files_dir = Path(source_files_dir)
+    if isinstance(source_labels_dir, str):
+        source_labels_dir = Path(source_labels_dir)
 
     file_moved = False
     label_moved = False
@@ -288,12 +341,17 @@ def move_file_safe(src: Path, dest_folder: Path) -> bool:
     Safely move a file from src to dest_folder using copy + remove.
 
     Args:
-        src: Source file path
-        dest_folder: Destination folder path
+        src: Source file path (can be Path object or string)
+        dest_folder: Destination folder path (can be Path object or string)
 
     Returns:
         True if file was successfully moved, False otherwise
     """
+    if isinstance(src, str):
+        src = Path(src)
+    if isinstance(dest_folder, str):
+        dest_folder = Path(dest_folder)
+
     if not src.exists():
         print(f"File not found: {src}")
         return False
@@ -320,26 +378,3 @@ def move_file_safe(src: Path, dest_folder: Path) -> bool:
     except Exception as e:
         print(f"Error moving {src}: {e}")
         return False
-
-
-def get_json_content_hash(json_path: Path) -> Optional[str]:
-    """
-    Read JSON file, parse it, and return MD5 hash of canonical representation.
-
-    Uses sorted keys to ensure consistent hashing regardless of key order.
-
-    Args:
-        json_path: Path to JSON file
-
-    Returns:
-        MD5 hash of JSON content, or None if error occurs
-    """
-    try:
-        with open(json_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        # Dump with sort_keys=True to ensure key order doesn't affect hash
-        canonical_str = json.dumps(data, sort_keys=True)
-        return hashlib.md5(canonical_str.encode("utf-8")).hexdigest()
-    except Exception as e:
-        print(f"Error processing {json_path}: {e}")
-        return None

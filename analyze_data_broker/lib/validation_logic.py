@@ -1,8 +1,15 @@
 # validation_logic.py
+import os
+import sys
 import re
 from datetime import datetime
-import validation_config
-import utils  # Import utils
+
+# Add parent directory to path to import common_lib
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from common_lib.date_utils import validate_date
+from lib import validation_config
+from lib import utils  # For broker-specific utils
 
 # ==============================================================================
 # Helper Functions

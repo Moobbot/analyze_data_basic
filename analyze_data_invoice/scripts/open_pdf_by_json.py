@@ -103,4 +103,4 @@ if __name__ == "__main__":
         print(f"\n--- Opening set for: {link_f} ---")
         find_and_open_files(link_f)
 
-# python open_pdf_by_json.py "Datasets_edit-2025-12-23-Hoang/Data/2022.02 -  Invoice-ARA-FLO29367.json"
+# python open_pdf_by_json.py "datasets_edit-2025-12-23-Hoang/Data/2022.02 -  Invoice-ARA-FLO29367.json"

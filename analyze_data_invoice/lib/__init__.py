@@ -1,17 +1,58 @@
 """
 Utility library for Invoice Data Audit Tool.
 
-This package provides commonly used utilities organized by functionality:
-- constants: Field types, thresholds, and configuration values
-- logger: Centralized logging infrastructure
-- date_utils: Date parsing and validation
-- file_utils: File operations and directory management
-- text_utils: Text processing and formatting
-- matchers: Matching algorithms for verification
+This package combines common utilities from common_lib with invoice-specific modules:
+- Common utilities (from common_lib): text, file, date processing, PDF extraction
+- Invoice-specific: constants, logger, matchers
+
+Usage:
+    from lib import normalize_text, validate_date  # From common_lib
+    from lib import get_logger, DATE_RELATED_FIELDS  # Invoice-specific
 """
 
-# Convenience imports for commonly used items
-from lib.constants import (
+import os
+import sys
+
+# Add parent directory to path to import common_lib
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+# Import from common_lib
+from common_lib.date_utils import (
+    MONTH_DICT,
+    parse_date_dmy,
+    validate_date,
+    normalize_date_string,
+    get_date_formats,
+)
+
+from common_lib.text_utils import (
+    format_size,
+    normalize_whitespace,
+    normalize_text,
+    remove_non_alphanumeric,
+    truncate_text,
+)
+
+from common_lib.file_utils import (
+    ensure_dir_exists,
+    read_file,
+    get_files_map,
+    get_files_map_recursive,
+    list_files_recursive,
+    get_json_content_hash,
+    move_file_safe,
+)
+
+from common_lib.pdf_utils import (
+    extract_text_from_pdf,
+    extract_and_save_to_txt,
+    is_text_based_pdf,
+)
+
+# Import invoice-specific modules (use relative imports)
+from .constants import (
     DATE_RELATED_FIELDS,
     PERCENTAGE_FIELDS,
     NUMERIC_FIELDS,
@@ -21,37 +62,10 @@ from lib.constants import (
     DEFAULT_ENCODING,
 )
 
-from lib.logger import get_logger, set_log_level
+from .logger import get_logger, set_log_level
 
-from lib.date_utils import (
-    MONTH_DICT,
-    parse_date_dmy,
-    validate_date,
-    normalize_date_string,
-    get_date_formats,
-)
-
-from lib.file_utils import (
-    format_size,
-    ensure_dir_exists,
-    read_file,
-    get_files_map,
-    get_files_map_recursive,
-    list_files_recursive,
-    copy_file_and_label,
-    move_file_and_label,
-    move_file_safe,
-    get_json_content_hash,
-)
-
-from lib.text_utils import (
-    normalize_whitespace,
-    normalize_text,
-    remove_non_alphanumeric,
-    truncate_text,
-)
-
-from lib.matchers import (
+# Import invoice-specific matchers (use relative import)
+from .matchers import (
     get_best_match,
     is_numeric_match,
     match_date_formats,
@@ -60,7 +74,7 @@ from lib.matchers import (
 )
 
 __all__ = [
-    # Constants
+    # Constants (invoice-specific)
     "DATE_RELATED_FIELDS",
     "PERCENTAGE_FIELDS",
     "NUMERIC_FIELDS",
@@ -68,32 +82,34 @@ __all__ = [
     "NUMERIC_EPSILON",
     "MIN_TEXT_LENGTH_FOR_VALID_PDF",
     "DEFAULT_ENCODING",
-    # Logger
+    # Logger (invoice-specific)
     "get_logger",
     "set_log_level",
-    # Date utils
+    # Date utils (from common_lib)
     "MONTH_DICT",
     "parse_date_dmy",
     "validate_date",
     "normalize_date_string",
     "get_date_formats",
-    # File utils
+    # File utils (from common_lib)
     "format_size",
     "ensure_dir_exists",
     "read_file",
     "get_files_map",
     "get_files_map_recursive",
     "list_files_recursive",
-    "copy_file_and_label",
-    "move_file_and_label",
-    "move_file_safe",
     "get_json_content_hash",
-    # Text utils
+    "move_file_safe",
+    # Text utils (from common_lib)
     "normalize_whitespace",
     "normalize_text",
     "remove_non_alphanumeric",
     "truncate_text",
-    # Matchers
+    # PDF utils (from common_lib)
+    "extract_text_from_pdf",
+    "extract_and_save_to_txt",
+    "is_text_based_pdf",
+    # Matchers (invoice-specific)
     "get_best_match",
     "is_numeric_match",
     "match_date_formats",

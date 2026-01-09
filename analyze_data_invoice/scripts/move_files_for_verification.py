@@ -77,7 +77,7 @@ def find_and_move_files(json_path):
 
 if __name__ == "__main__":
     # Default values compatible with user's typical usage pattern
-    json_input_dir = "Datasets_edit-2025-12-23-Hoang/Data"
+    json_input_dir = "datasets_edit-2025-12-23-Hoang/Data"
 
     # List of files to process if no command line args are given
     # You can add multiple filenames to this list

@@ -7,7 +7,7 @@ for invoice data processing.
 
 import re
 from datetime import datetime
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple, Dict, List
 
 # Month dictionary for parsing dates with month names
 MONTH_DICT: Dict[str, str] = {
@@ -47,6 +47,10 @@ def normalize_date_string(date_str: str) -> str:
 
     Returns:
         Normalized date string
+
+    Examples:
+        >>> normalize_date_string("  03  Oct  2023  ")
+        '03 Oct 2023'
     """
     if not date_str:
         return ""
@@ -73,6 +77,12 @@ def parse_date_dmy(date_str: str) -> Optional[datetime]:
 
     Returns:
         datetime object or None if parsing fails
+
+    Examples:
+        >>> parse_date_dmy("03 Oct 2023")
+        datetime.datetime(2023, 10, 3, 0, 0)
+        >>> parse_date_dmy("31-Jul-21")
+        datetime.datetime(2021, 7, 31, 0, 0)
     """
     if not date_str or not isinstance(date_str, str):
         return None
@@ -146,6 +156,11 @@ def validate_date(date_str: str) -> Tuple[bool, Optional[datetime], str]:
 
     Returns:
         Tuple of (is_valid: bool, parsed_date: datetime or None, format_used: str)
+
+    Examples:
+        >>> valid, date, fmt = validate_date("03 Oct 2023")
+        >>> print(f"Valid: {valid}, Format: {fmt}")
+        Valid: True, Format: DD Mon YYYY
     """
     if not date_str or not isinstance(date_str, str):
         return (False, None, "")
@@ -182,6 +197,7 @@ def validate_date(date_str: str) -> Tuple[bool, Optional[datetime], str]:
         ("%Y.%m.%d", "YYYY.MM.DD"),  # 2025.04.11
         ("%y/%m/%d", "YY/MM/DD"),  # 23/01/18
         ("%y-%m-%d", "YY-MM-DD"),  # 23-01-18
+        ("%Y%m%d", "YYYYMMDD"),  # 20230103
     ]
 
     for fmt, fmt_name in formats_to_try:
@@ -194,12 +210,20 @@ def validate_date(date_str: str) -> Tuple[bool, Optional[datetime], str]:
     return (False, None, "")
 
 
-def get_date_formats() -> list:
+def get_date_formats() -> List[Tuple[str, str]]:
     """
     Get list of supported date formats.
 
     Returns:
         List of tuples (format_code, format_name)
+
+    Examples:
+        >>> formats = get_date_formats()
+        >>> for code, name in formats[:3]:
+        ...     print(f"{name}: {code}")
+        DD/MM/YYYY: %d/%m/%Y
+        YYYY-MM-DD: %Y-%m-%d
+        DD-MM-YYYY: %d-%m-%Y
     """
     return [
         ("%d/%m/%Y", "DD/MM/YYYY"),
@@ -215,4 +239,5 @@ def get_date_formats() -> list:
         ("%d-%b-%y", "DD-Mon-YY"),
         ("%d.%m.%Y", "DD.MM.YYYY"),
         ("%Y.%m.%d", "YYYY.MM.DD"),
+        ("%Y%m%d", "YYYYMMDD"),
     ]

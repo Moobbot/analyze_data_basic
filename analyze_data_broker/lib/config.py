@@ -5,7 +5,7 @@ import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Source Directories
-# DATASET_DIR = os.path.join(BASE_DIR, "Datasets", "Dataset_Invoice_one_page")
+# DATASET_DIR = os.path.join(BASE_DIR, "datasets", "Dataset_Invoice_one_page")
 # LABEL_DIR = os.path.join(BASE_DIR, "Label_Invoice_One_Page")
 DATASET_DIR = os.path.join(BASE_DIR, "datasets", "files")
 LABEL_DIR = os.path.join(BASE_DIR, "datasets", "labels")

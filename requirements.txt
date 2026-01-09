@@ -1,0 +1,70 @@
+# Requirements for analyze_data_basic Project
+# 
+# This file contains all dependencies for both analyze_data_invoice and analyze_data_broker modules
+# Install: pip install -r requirements.txt
+#
+# Last updated: 2026-01-09 (After refactoring to common_lib)
+
+# ============================================================================
+# Core PDF Processing (Required)
+# ============================================================================
+
+# PyMuPDF - Fast and powerful PDF text extraction
+# Used by: common_lib/pdf_utils.py
+PyMuPDF>=1.23.0
+
+# ============================================================================
+# Optional PDF Libraries (Backup/Alternative)
+# ============================================================================
+
+# PyPDF2 - Basic PDF manipulation and metadata extraction
+# Used by: analyze_data_invoice (optional, for comparison)
+PyPDF2==3.0.1
+
+# pdfplumber - Alternative PDF processing with table extraction support
+# Used by: analyze_data_invoice (optional, for comparison)
+pdfplumber>=0.10.0
+
+# ============================================================================
+# Data Processing (Optional but Recommended)
+# ============================================================================
+
+# openpyxl - Excel file handling (for json_to_excel.py)
+# Used by: analyze_data_broker/scripts/json_to_excel.py
+openpyxl>=3.0.0
+
+# ============================================================================
+# Development & Testing (Optional)
+# ============================================================================
+
+# pytest - Testing framework
+# pytest>=7.0.0
+
+# black - Code formatter
+# black>=23.0.0
+
+# flake8 - Linting
+# flake8>=6.0.0
+
+# ============================================================================
+# Notes
+# ============================================================================
+#
+# Minimal Installation (Only PyMuPDF):
+#   pip install PyMuPDF
+#
+# Full Installation (All features):
+#   pip install -r requirements.txt
+#
+# Python Version: 3.10+
+#
+# Library Purposes:
+# - PyMuPDF: Primary PDF text extraction (common_lib/pdf_utils.py)
+# - PyPDF2: Backup PDF library, metadata extraction
+# - pdfplumber: Advanced table extraction (if needed)
+# - openpyxl: Excel export functionality
+#
+# After Refactoring:
+# - common_lib/ uses only PyMuPDF for PDF processing
+# - Both modules share common_lib utilities
+# - Reduced dependencies compared to before

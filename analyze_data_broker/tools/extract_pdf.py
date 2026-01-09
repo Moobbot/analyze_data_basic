@@ -1,8 +1,14 @@
 import os
+import sys
 import shutil
-import fitz  # PyMuPDF
-import config
-import utils
+
+# Add parent directory to path to import common_lib
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from common_lib.pdf_utils import extract_text_from_pdf, is_text_based_pdf
+from common_lib.file_utils import ensure_dir_exists, list_files_recursive
+from lib import utils
+from lib import config
 
 
 def extract_text_from_pdfs():
@@ -51,17 +57,19 @@ def extract_text_from_pdfs():
         has_label = os.path.exists(label_path)
 
         try:
-            text_content = ""
-            # PyMuPDF Open
-            with fitz.open(pdf_path) as doc:
-                for page in doc:
-                    text_content += page.get_text() + "\n"
+            # Use common_lib extraction function
+            text_content = extract_text_from_pdf(pdf_path)
+
+            if text_content is None:
+                # Extraction error
+                raise Exception("Failed to extract text from PDF")
 
             # Analyze extracted text
             clean_text = text_content.strip()
 
             # HEURISTIC: If text is empty or very short (< 50 chars), assume it's an image/scanned PDF
-            if not clean_text or len(clean_text) < 50:
+            if not is_text_based_pdf(pdf_path, min_text_length=50):
+
                 if has_label:
                     image_files.append(filename)
                     count_image_with_label += 1

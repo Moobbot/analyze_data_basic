@@ -9,8 +9,8 @@ INPUT_ROOT_FOLDER = "datasets/labels/Trade_Confirmation"
 # INPUT_ROOT_FOLDER = "datasets/labels/Contact_Note"
 
 # 2. Tên file kết quả đầu ra
-OUTPUT_FILE = "Datasets/acpa_broker_trade_sft_dataset_generated.jsonl"
-# OUTPUT_FILE = "Datasets/acpa_broker_contact_sft_dataset_generated.jsonl"
+OUTPUT_FILE = "datasets/acpa_broker_trade_sft_dataset_generated.jsonl"
+# OUTPUT_FILE = "datasets/acpa_broker_contact_sft_dataset_generated.jsonl"
 
 # 3. Đường dẫn giả định cho ảnh trong server training (Prefix)
 # Code sẽ ghép: IMAGE_PREFIX + Tên_File.png
