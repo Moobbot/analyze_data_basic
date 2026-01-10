@@ -2,13 +2,16 @@ import os
 import sys
 import shutil
 
-# Add parent directory to path to import common_lib
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Ensure both broker root (for lib) and project root (for common_lib) are on sys.path
+BROKER_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(BROKER_ROOT)
+if BROKER_ROOT not in sys.path:
+    sys.path.insert(0, BROKER_ROOT)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 from common_lib.pdf_utils import extract_text_from_pdf, is_text_based_pdf
-from common_lib.file_utils import ensure_dir_exists, list_files_recursive
-from lib import utils
-from lib import config
+from lib import utils, config
 
 
 def extract_text_from_pdfs():
@@ -46,14 +49,26 @@ def extract_text_from_pdfs():
     for i, filename in enumerate(files):
         pdf_path = os.path.join(config.DATASET_DIR, filename)
         txt_filename = os.path.splitext(filename)[0] + ".txt"
-        txt_path = os.path.join(config.EXTRACTED_TEXT_DIR, txt_filename)
+
+        # Derive label category subfolder (e.g., Trade_Confirmation) if label exists
+        label_filename = os.path.splitext(filename)[0] + ".json"
+        label_path = os.path.join(config.LABEL_DIR, label_filename)
+        category_dir = None
+        if os.path.exists(label_path):
+            category_dir = os.path.basename(os.path.dirname(label_path))
+
+        if category_dir:
+            txt_path = os.path.join(
+                config.EXTRACTED_TEXT_DIR, category_dir, txt_filename
+            )
+        else:
+            # Fallback: write directly under extracted_text
+            txt_path = os.path.join(config.EXTRACTED_TEXT_DIR, txt_filename)
 
         # Ensure txt output subdirectory exists
         utils.ensure_dir_exists(os.path.dirname(txt_path))
 
         # Check if label exists
-        label_filename = os.path.splitext(filename)[0] + ".json"
-        label_path = os.path.join(config.LABEL_DIR, label_filename)
         has_label = os.path.exists(label_path)
 
         try:

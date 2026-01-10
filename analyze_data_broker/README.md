@@ -4,6 +4,8 @@ Data processing and validation tools for financial documents (Trade Confirmation
 
 > **📖 v2.0 Update:** Module refactored to use shared `common_lib/`. See [RUNNING_GUIDE_BROKER.md](../RUNNING_GUIDE_BROKER.md) for detailed guide.
 
+> Important: Run scripts from the `analyze_data_broker/` directory. This ensures paths resolve correctly and extracted text is stored under `output_analyze/datasets/extracted_text/<label_subfolder>/`.
+
 ## Project Structure
 
 ```
@@ -132,6 +134,21 @@ One-time fix and utility tools:
 - `tools/fix_duplicate_keys.py` - Fix duplicate JSON keys
 - `tools/wrap_json_arrays.py` - Wrap JSON objects in arrays
 - `tools/extract_pdf.py` - Extract text from PDFs
+
+### Running Location Requirement
+
+All broker scripts are intended to be run with the current directory set to `analyze_data_broker/`.
+
+Example:
+
+```bash
+cd d:\Work\Clients\AIRC\product\ACPA\analyze_data_basic\analyze_data_broker
+python tools/extract_pdf.py
+python check_transaction_type.py
+```
+
+Output text files are written to `output_analyze/datasets/extracted_text/<label_subfolder>/<name>.txt` to match validation lookups.
+
 - `tools/verify_date_conversion.py` - Verify date conversions
 - `tools/update_account_numbers.py` - Update account numbers
 

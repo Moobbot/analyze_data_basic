@@ -13,8 +13,11 @@ TRANSACTION_KEYWORDS = {
         "Your Purchase",
         "New issue purchase",
         "SOLD to you as PRINCIPAL",
+        "have SOLD to you as PRINCIPAL",
         "BOUGHT for you as AGENT",
-        "received against payment",
+        "HAVE BOUGHT FOR",
+        "have BOUGHT for you as AGENT",
+        "Receive against payment",
     ],
     "SELL": [
         "Sale",

@@ -12,6 +12,7 @@ sys.path.insert(0, parent_dir)
 
 import json
 import csv
+import shutil
 from lib import config, validation_logic
 
 # ==============================================================================
@@ -128,10 +129,12 @@ def validate_file(json_path):
         ]
         for f in numeric_fields:
             validation_logic.check_generic_field(f, data, (int, float), result_log)
+            validation_logic.check_field_presence(f, data, text_content, result_log)
 
-        string_fields = ["Client name", "Name/ Security", "Currency"]
+        string_fields = ["Client name", "Name/ Security", "Currency", "Securities ID"]
         for f in string_fields:
             validation_logic.check_generic_field(f, data, str, result_log)
+            validation_logic.check_field_presence(f, data, text_content, result_log)
 
         # Format Generic Errors
         if result_log["Generic Errors"]:
@@ -173,14 +176,55 @@ def generate_report(results, report_path):
     )
 
     # Trade Date Stats
-    date_pass = sum(1 for r in results if r.get("Trade Date") == "PASS")
-    date_warn = sum(1 for r in results if str(r.get("Trade Date")).startswith("WARN"))
-    date_fail = sum(1 for r in results if str(r.get("Trade Date")).startswith("FAIL"))
+    trade_pass = sum(1 for r in results if r.get("Trade Date") == "PASS")
+    trade_warn = sum(1 for r in results if str(r.get("Trade Date")).startswith("WARN"))
+    trade_fail = sum(1 for r in results if str(r.get("Trade Date")).startswith("FAIL"))
+
+    # Settlement Date Stats
+    settle_pass = sum(1 for r in results if r.get("Settlement Date") == "PASS")
+    settle_warn = sum(
+        1 for r in results if str(r.get("Settlement Date")).startswith("WARN")
+    )
+    settle_fail = sum(
+        1 for r in results if str(r.get("Settlement Date")).startswith("FAIL")
+    )
 
     # ISIN Stats
     isin_pass = sum(1 for r in results if r.get("ISIN Status") == "PASS")
     isin_fail = sum(1 for r in results if str(r.get("ISIN Status")).startswith("FAIL"))
     isin_missing = sum(1 for r in results if r.get("ISIN Status") == "MISSING")
+
+    # Presence stats for other fields (JSON vs Text)
+    presence_fields = [
+        "Quantity",
+        "Foreign Unit Price",
+        "Foreign Net Consideration",
+        "Net Consideration",
+        "Exec Commission",
+        "Foreign Gross Consideration",
+        "Client name",
+        "Name/ Security",
+        "Currency",
+    ]
+
+    def presence_counts(field):
+        json_key = f"{field} (JSON)"
+        text_key = f"{field} (Text)"
+        p_pass = 0
+        p_fail = 0
+        p_missing = 0
+        for r in results:
+            json_val = r.get(json_key)
+            text_val = r.get(text_key)
+            has_json = json_val not in (None, "")
+            has_text = text_val not in (None, "")
+            if not has_json:
+                p_missing += 1
+            elif has_text:
+                p_pass += 1
+            else:
+                p_fail += 1
+        return p_pass, p_fail, p_missing
 
     # Critical Errors (Files with "Error" field populated)
     critical_errors = [r for r in results if r.get("Error")]
@@ -203,12 +247,22 @@ def generate_report(results, report_path):
                 f"Transaction Type: {trans_pass} PASS, {trans_fail} FAIL, {trans_warn} WARN\n"
             )
             f.write(
-                f"Trade Date:       {date_pass} PASS, {date_fail} FAIL, {date_warn} WARN\n"
+                f"Trade Date:       {trade_pass} PASS, {trade_fail} FAIL, {trade_warn} WARN\n"
+            )
+            f.write(
+                f"Settlement Date:  {settle_pass} PASS, {settle_fail} FAIL, {settle_warn} WARN\n"
             )
             f.write(
                 f"ISIN Status:      {isin_pass} PASS, {isin_fail} FAIL, {isin_missing} MISSING\n\n"
             )
 
+            f.write("PRESENCE IN TEXT (Other Fields)\n")
+            f.write("--------------------------------\n")
+            for field in presence_fields:
+                p_pass, p_fail, p_missing = presence_counts(field)
+                f.write(f"{field}: {p_pass} PASS, {p_fail} FAIL, {p_missing} MISSING\n")
+
+            f.write("\n")
             if critical_errors:
                 f.write("CRITICAL ERRORS\n")
                 f.write("---------------\n")
@@ -220,6 +274,85 @@ def generate_report(results, report_path):
         print(f"Successfully wrote report to {report_path}")
     except Exception as e:
         print(f"Error writing report: {e}")
+
+
+# ==============================================================================
+# File Filtering and Organization
+# ==============================================================================
+
+
+def copy_ambiguous_date_files(results, input_folder, output_dir):
+    """Copies JSON files and their corresponding text files with ambiguous date format warnings to a separate folder.
+
+    Args:
+        results: List of validation results
+        input_folder: Source folder where original JSON files are located
+        output_dir: Base output directory where ambiguous_dates folder will be created
+    """
+    # Find files with ambiguous date warnings
+    ambiguous_files = []
+    for r in results:
+        trade_date = r.get("Trade Date", "")
+        settlement_date = r.get("Settlement Date", "")
+
+        if "WARN: Ambiguous Date Format" in str(
+            trade_date
+        ) or "WARN: Ambiguous Date Format" in str(settlement_date):
+            ambiguous_files.append(r.get("File"))
+
+    if not ambiguous_files:
+        print("No files with ambiguous date format found.")
+        return
+
+    # Create output folder for ambiguous date files
+    ambiguous_folder = os.path.join(output_dir, "ambiguous_dates")
+    os.makedirs(ambiguous_folder, exist_ok=True)
+
+    # Copy JSON files and corresponding text files
+    copied_json_count = 0
+    copied_text_count = 0
+
+    for filename in ambiguous_files:
+        # Find and copy JSON file
+        for root, dirs, filenames in os.walk(input_folder):
+            if filename in filenames:
+                source_json_path = os.path.join(root, filename)
+                dest_json_path = os.path.join(ambiguous_folder, filename)
+
+                try:
+                    shutil.copy2(source_json_path, dest_json_path)
+                    copied_json_count += 1
+                    print(f"Copied JSON: {filename}")
+                except Exception as e:
+                    print(f"Error copying JSON {filename}: {e}")
+
+                # Find and copy corresponding text file
+                try:
+                    parent_dir_name = os.path.basename(root)  # e.g., Trade_Confirmation
+                    name_no_ext = os.path.splitext(filename)[0]
+
+                    # Use fixed extracted_text directory with the label subfolder
+                    txt_path = os.path.join(
+                        config.EXTRACTED_TEXT_DIR, parent_dir_name, name_no_ext + ".txt"
+                    )
+
+                    if os.path.exists(txt_path):
+                        dest_txt_path = os.path.join(
+                            ambiguous_folder, name_no_ext + ".txt"
+                        )
+                        shutil.copy2(txt_path, dest_txt_path)
+                        copied_text_count += 1
+                        print(f"Copied TEXT: {name_no_ext}.txt")
+                    else:
+                        print(f"Text file not found for: {filename}")
+                except Exception as e:
+                    print(f"Error copying text file for {filename}: {e}")
+
+                break
+
+    print(
+        f"\nSuccessfully copied {copied_json_count} JSON files and {copied_text_count} text files to: {ambiguous_folder}"
+    )
 
 
 # ==============================================================================
@@ -265,6 +398,26 @@ def process_folder(input_folder, output_csv, output_report=None):
             "ISIN Status",
             "ISIN (JSON)",
             "ISIN (Text)",
+            # Numeric fields (JSON/Text)
+            "Quantity (JSON)",
+            "Quantity (Text)",
+            "Foreign Unit Price (JSON)",
+            "Foreign Unit Price (Text)",
+            "Foreign Net Consideration (JSON)",
+            "Foreign Net Consideration (Text)",
+            "Net Consideration (JSON)",
+            "Net Consideration (Text)",
+            "Exec Commission (JSON)",
+            "Exec Commission (Text)",
+            "Foreign Gross Consideration (JSON)",
+            "Foreign Gross Consideration (Text)",
+            # String fields (JSON/Text)
+            "Client name (JSON)",
+            "Client name (Text)",
+            "Name/ Security (JSON)",
+            "Name/ Security (Text)",
+            "Currency (JSON)",
+            "Currency (Text)",
             "Generic Errors",
             "Error",
         ]
@@ -290,6 +443,10 @@ def process_folder(input_folder, output_csv, output_report=None):
                 os.path.dirname(output_csv), f"{base}_report.txt"
             )
         generate_report(results, output_report)
+
+        # Copy files with ambiguous date format to separate folder
+        output_dir = os.path.dirname(output_csv)
+        copy_ambiguous_date_files(results, input_folder, output_dir)
 
     else:
         print("No results to write.")

@@ -65,15 +65,32 @@ __all__ = [
 
 def normalize_text(text):
     """
-    Broker-specific text normalization (lowercase, remove newlines).
+    Broker-specific text normalization (lowercase, remove soft hyphens, collapse whitespace).
 
-    This is a specialized version for broker module.
+    This is a specialized version for broker module that always lowercases.
     For general normalization, use common_lib.text_utils.normalize_text()
+
+    Performs:
+    - Removes soft hyphens (\xad) common in PDFs
+    - Converts to lowercase
+    - Collapses all whitespace (spaces, newlines, tabs) into single spaces
+    - Strips leading/trailing whitespace
     """
     if not text:
         return ""
-    # Convert to lowercase, replace newlines with spaces, and strip whitespace
-    return text.lower().replace("\n", " ").strip()
+
+    import re
+
+    # Remove soft hyphens (common in PDFs)
+    normalized = text.replace("\xad", "")
+
+    # Convert to lowercase, replace newlines with spaces, collapse multiple spaces, and strip
+    normalized = (
+        normalized.lower().replace("\n", " ").replace("\r", " ").replace("\t", " ")
+    )
+    # Collapse multiple spaces into single space
+    normalized = re.sub(r"\s+", " ", normalized)
+    return normalized.strip()
 
 
 # ============================================================================

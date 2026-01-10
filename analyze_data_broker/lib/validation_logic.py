@@ -60,6 +60,8 @@ def match_date_formats(parsed_date, text_content, text_lower, date_format):
         parsed_date.strftime("%d-%m-%Y"),
         parsed_date.strftime("%m/%d/%Y"),
         parsed_date.strftime("%B %d, %Y"),
+        parsed_date.strftime("%b %d, %Y"),
+        parsed_date.strftime("%b %d %Y"),
         parsed_date.strftime("%d %b, %Y"),
         parsed_date.strftime("%d-%b-%Y"),
         parsed_date.strftime("%d-%b-%y"),
@@ -156,6 +158,79 @@ def match_date_formats(parsed_date, text_content, text_lower, date_format):
     return None
 
 
+# Numeric/string matching helpers
+
+
+def _number_variants(value):
+    """Generate common textual variants for a numeric value."""
+    variants = set()
+    try:
+        if isinstance(value, (int, float)):
+            # Base string without formatting
+            variants.add(str(value))
+            # Integers
+            if isinstance(value, int) or abs(value - round(value)) < 1e-6:
+                iv = int(round(value))
+                variants.add(f"{iv}")
+                variants.add(f"{iv:,}")
+                # Negative parentheses
+                if iv < 0:
+                    variants.add(f"({abs(iv):,})")
+            else:
+                # Floats: two decimals typical
+                variants.add(f"{value:.2f}")
+                variants.add(f"{value:,.2f}")
+                # Three decimals sometimes
+                variants.add(f"{value:.3f}")
+                variants.add(f"{value:,.3f}")
+                # Negative parentheses
+                if value < 0:
+                    variants.add(f"({abs(value):,.2f})")
+                    variants.add(f"({abs(value):,.3f})")
+    except Exception:
+        pass
+    return list(variants)
+
+
+def check_field_presence(field, data, text_content, result_log):
+    """Log JSON value and matched text occurrence for a field (string/numeric)."""
+    val = data.get(field)
+    # Alias for ISIN
+    if field == "Securities ID":
+        json_key = "ISIN (JSON)"
+        text_key = "ISIN (Text)"
+    else:
+        json_key = f"{field} (JSON)"
+        text_key = f"{field} (Text)"
+
+    result_log[json_key] = val if val is not None else ""
+
+    if val is None:
+        result_log[text_key] = ""
+        return
+
+    # Match logic
+    try:
+        # Use raw text for numeric (preserve commas), normalized for strings
+        if isinstance(val, (int, float)):
+            candidates = _number_variants(val)
+            found = next((c for c in candidates if c in text_content), None)
+            result_log[text_key] = found or ""
+        elif isinstance(val, str):
+            text_lower = utils.normalize_text(text_content)
+            vnorm = utils.normalize_text(val)
+            result_log[text_key] = vnorm if (vnorm and vnorm in text_lower) else ""
+        else:
+            # Fallback to string search
+            sval = str(val)
+            text_lower = utils.normalize_text(text_content)
+            result_log[text_key] = (
+                sval.lower() if sval and sval.lower() in text_lower else ""
+            )
+    except Exception:
+        result_log[text_key] = ""
+
+
 # ==============================================================================
 # Validation Functions
 # ==============================================================================
@@ -198,8 +273,30 @@ def check_transaction_type(data, text_content, result_log):
         result_log["Transaction Type"] = "PASS"
         result_log["Transaction Type (Text)"] = matched_kw
     else:
-        result_log["Transaction Type"] = f"FAIL: Keywords not found"
-        result_log["Transaction Type (Text)"] = ""
+        # Expected keywords not found. Check if keywords for OTHER types exist.
+        found_other = False
+        other_type = ""
+        other_kw = ""
+
+        for t_type, kws in validation_config.TRANSACTION_KEYWORDS.items():
+            if t_type == val_upper:
+                continue  # Skip expected type
+
+            for kw in kws:
+                if kw.lower() in text_lower:
+                    found_other = True
+                    other_type = t_type
+                    other_kw = kw
+                    break
+            if found_other:
+                break
+
+        if found_other:
+            result_log["Transaction Type"] = f"FAIL: Found {other_type}"
+            result_log["Transaction Type (Text)"] = other_kw
+        else:
+            result_log["Transaction Type"] = f"FAIL: Keywords not found"
+            result_log["Transaction Type (Text)"] = ""
 
 
 def check_date_field(field_name, data, text_content, result_log):

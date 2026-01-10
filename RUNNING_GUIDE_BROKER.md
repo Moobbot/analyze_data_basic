@@ -249,6 +249,7 @@ python scripts/json_to_excel.py datasets/labels/Contact_Note/0817.json output/ex
 
 ```bash
 # Trích xuất text từ PDFs
+cd analyze_data_broker
 python tools/extract_pdf.py
 ```
 
@@ -256,7 +257,9 @@ python tools/extract_pdf.py
 
 - Sử dụng **common_lib.pdf_utils**
 - Phát hiện PDF ảnh/scan
-- Output: `extracted_text/*.txt`
+- Output: `output_analyze/datasets/extracted_text/<label_subfolder>/<name>.txt`
+
+> Lưu ý: Chạy từ thư mục `analyze_data_broker/` để đảm bảo đường dẫn chính xác và vị trí output đúng chuẩn.
 
 ---
 
@@ -364,9 +367,10 @@ def check_isin(data, result_log):
 **Giải pháp:**
 
 ```bash
-# Option 1: Chạy từ thư mục gốc
-cd d:\Work\Clients\AIRC\product\ACPA\analyze_data_basic
-python analyze_data_broker/check_transaction_type.py
+# Run từ thư mục broker (khuyến nghị)
+cd d:\Work\Clients\AIRC\product\ACPA\analyze_data_basic\analyze_data_broker
+python check_transaction_type.py
+python tools/extract_pdf.py
 
 # Option 2: Thủ công thêm path (already fixed in code)
 # lib/utils.py đã tự động: sys.path.insert(0, parent_dir)
