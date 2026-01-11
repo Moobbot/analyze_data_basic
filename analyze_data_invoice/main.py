@@ -3,6 +3,8 @@ from pathlib import Path
 
 # Add project root to sys.path to ensure imports work if run from subdirs (though usually run from root)
 sys.path.append(str(Path(__file__).resolve().parent))
+# Add parent directory to allow importing common_lib
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import config
 import core.cleaning

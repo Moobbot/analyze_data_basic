@@ -18,38 +18,42 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
-# Import from common_lib
-from common_lib.date_utils import (
-    MONTH_DICT,
-    parse_date_dmy,
-    validate_date,
-    normalize_date_string,
-    get_date_formats,
-)
+try:
+    # Import from common_lib
+    from common_lib.date_utils import (
+        MONTH_DICT,
+        parse_date_dmy,
+        validate_date,
+        normalize_date_string,
+        get_date_formats,
+    )
 
-from common_lib.text_utils import (
-    format_size,
-    normalize_whitespace,
-    normalize_text,
-    remove_non_alphanumeric,
-    truncate_text,
-)
+    from common_lib.text_utils import (
+        format_size,
+        normalize_whitespace,
+        normalize_text,
+        remove_non_alphanumeric,
+        truncate_text,
+    )
 
-from common_lib.file_utils import (
-    ensure_dir_exists,
-    read_file,
-    get_files_map,
-    get_files_map_recursive,
-    list_files_recursive,
-    get_json_content_hash,
-    move_file_safe,
-)
+    from common_lib.file_utils import (
+        ensure_dir_exists,
+        read_file,
+        get_files_map,
+        get_files_map_recursive,
+        list_files_recursive,
+        get_json_content_hash,
+        move_file_safe,
+    )
 
-from common_lib.pdf_utils import (
-    extract_text_from_pdf,
-    extract_and_save_to_txt,
-    is_text_based_pdf,
-)
+    from common_lib.pdf_utils import (
+        extract_text_from_pdf,
+        extract_and_save_to_txt,
+        is_text_based_pdf,
+    )
+except ImportError:
+    # Allow running without common_lib (e.g. for standalone scripts that don't need it)
+    pass
 
 # Import invoice-specific modules (use relative imports)
 from .constants import (

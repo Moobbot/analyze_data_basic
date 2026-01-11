@@ -6,16 +6,16 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 
 # Source Directories
-DATASET_DIR = BASE_DIR / "datasets" / "data-all-check-v2" / "files"
-LABEL_DIR = BASE_DIR / "datasets" / "data-all-check-v2" / "labels"
+DATASET_DIR = BASE_DIR / "datasets" / "data-all" / "files"
+LABEL_DIR = BASE_DIR / "datasets" / "data-all" / "labels"
 
 DIRECTORIES = {"Dataset": DATASET_DIR, "Label": LABEL_DIR}
 
 # Verified Labels Output
-LABEL_TRUE_DIR = BASE_DIR / "datasets" / "data-all-check-v2" / "true"
+LABEL_TRUE_DIR = BASE_DIR / "datasets" / "data-all" / "true"
 
 # Output Directory
-REVIEW_DIR = BASE_DIR / "output_analyze" / "data-all-check-v2"
+REVIEW_DIR = BASE_DIR / "output_analyze" / "data-all"
 
 # Destination Directories (for separation)
 DEST_MISSING = REVIEW_DIR / "Files_Missing_In_Label"
@@ -37,8 +37,8 @@ EXTRACTED_TEXT_DIR = REVIEW_DIR / "extracted_text"
 
 # Default Output Filenames
 REPORT_DIR = REVIEW_DIR / "reports"
-OUTPUT_CSV_NAME = "data_statistics.csv"
-OUTPUT_REPORT_NAME = "data_summary_report.txt"
+OUTPUT_CSV_NAME = REPORT_DIR / "data_statistics.csv"
+OUTPUT_REPORT_NAME = REPORT_DIR / "data_summary_report.txt"
 OUTPUT_DIFF_NAME = REPORT_DIR / "file_differences.txt"
 OUTPUT_FINAL_NAME = REPORT_DIR / "final_summary.txt"
 

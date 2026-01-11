@@ -283,7 +283,7 @@ def get_best_match(
         Tuple of (status, confidence_score, matched_text, date_format, context_line)
     """
     # Import here to avoid circular dependency
-    from lib import date_utils
+    from common_lib import date_utils
 
     if value is None or (isinstance(value, str) and value.strip() == ""):
         return "N/A", 0, "", "", ""

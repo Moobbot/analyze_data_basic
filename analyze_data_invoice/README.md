@@ -29,6 +29,9 @@ Project này cung cấp quy trình tự động để kiểm tra chất lượng
 - ✅ Xử lý số tiền với nhiều format (dấu phẩy, dấu chấm, accounting format)
 - ✅ Phát hiện file trùng lặp dựa trên nội dung
 - ✅ Báo cáo chi tiết theo từng trường dữ liệu
+- ✅ **Shared utilities via `common_lib`** (v2.0 refactoring)
+
+> **📖 Xem thêm:** [RUNNING_GUIDE_INVOICE.md](../RUNNING_GUIDE_INVOICE.md) - Hướng dẫn chi tiết
 
 ## Cài Đặt
 
@@ -43,14 +46,18 @@ Project này cung cấp quy trình tự động để kiểm tra chất lượng
 2. Cài đặt dependencies:
 
 ```bash
+# Từ thư mục gốc của project
+cd d:\Work\Clients\AIRC\product\ACPA\analyze_data_basic
 pip install -r requirements.txt
 ```
 
 Các thư viện chính:
 
-- `pymupdf` - Trích xuất text từ PDF
+- `pymupdf` - Trích xuất text từ PDF (shared via common_lib)
 - `pdfplumber` - Thư viện PDF bổ sung
 - `PyPDF2` - Xử lý PDF cơ bản
+
+> **Note:** Sau refactoring v2.0, dependencies được quản lý tập trung tại `requirements.txt` ở thư mục gốc.
 
 ## Cấu Hình
 
@@ -79,11 +86,17 @@ PDF_IMAGE_DIR = "output_analyze/data_x/PDF_Image_Files"
 ## Cấu Trúc Dự Án
 
 ```
-check_data_2025_12_19/
-├── main.py                      # Unifed Entry Point (Chạy toàn bộ pipeline)
+analyze_data_invoice/
+├── main.py                      # Unified Entry Point (Chạy toàn bộ pipeline)
 ├── config.py                    # Cấu hình chính
-├── utils.py                     # Hàm tiện ích dùng chung
+├── utils.py                     # Backward compatibility shim
 ├── requirements.txt             # Dependencies
+│
+├── lib/                         # Shared & Invoice-specific Libraries
+│   ├── __init__.py             # Re-exports from common_lib + local modules
+│   ├── constants.py            # Invoice-specific constants
+│   ├── logger.py               # Logging infrastructure
+│   └── matchers.py             # Invoice-specific matching logic
 │
 ├── core/                        # Core Logic Modules
 │   ├── __init__.py
@@ -103,19 +116,25 @@ check_data_2025_12_19/
 │
 ├── scripts/                     # Standalone Utility Scripts
 │   ├── __init__.py
-│   ├── compare_pdf_libs.py      # So sánh thư viện PDF
-│   ├── convert_jsonl.py         # Convert JSONL
-│   ├── filter_comma_format.py   # Tìm format số có dấu phẩy
 │   ├── move_files_for_verification.py  # Di chuyển file cần verify
 │   └── open_pdf_by_json.py      # Mở PDF từ JSON path
 │
-├── Datasets/                    # Dữ liệu nguồn (Cấu hình trong config.py)
-│   ├── data-all/dest/           # PDF files
-│   └── data-all/labels/         # JSON labels
+├── datasets/                    # Dữ liệu nguồn (Cấu hình trong config.py)
+│   ├── files/                   # PDF files
+│   └── labels/                  # JSON labels
 │
 └── output_analyze/              # Kết quả đầu ra
-    └── data-all/                # Báo cáo và file phân loại
+    └── datasets/                # Báo cáo và file phân loại
+
+../common_lib/                   # Shared Utilities (Used by multiple modules)
+├── __init__.py                  # Main exports
+├── text_utils.py                # Text processing functions
+├── file_utils.py                # File operations
+├── date_utils.py                # Date parsing & validation
+└── pdf_utils.py                 # PDF text extraction (PyMuPDF)
 ```
+
+> **Note:** Sau refactoring, các utilities chung (text, file, date, PDF processing) đã được di chuyển sang `common_lib/` để tái sử dụng giữa các modules.
 
 ## Hướng Dẫn Sử Dụng
 

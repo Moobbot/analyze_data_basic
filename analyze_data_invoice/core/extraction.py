@@ -2,7 +2,11 @@ import os
 import shutil
 import fitz  # PyMuPDF
 import config
-from lib.file_utils import move_file_and_label, copy_file_and_label
+from common_lib.file_utils import (
+    move_file_and_label,
+    copy_file_and_label,
+    list_files_recursive,
+)
 from lib.logger import get_logger
 from lib.constants import MIN_TEXT_LENGTH_FOR_VALID_PDF
 
@@ -37,9 +41,6 @@ def extract_text_from_pdfs():
     if not config.DATASET_DIR.exists():
         logger.error(f"Dataset directory not found: {config.DATASET_DIR}")
         return
-
-    # Import list_files_recursive from backward-compatible utils
-    from lib.file_utils import list_files_recursive
 
     files = list_files_recursive(config.DATASET_DIR, ".pdf")
     total_files = len(files)
@@ -78,6 +79,8 @@ def extract_text_from_pdfs():
                         filename,
                         config.PDF_IMAGE_FILES_DIR,
                         config.PDF_IMAGE_LABELS_DIR,
+                        config.DATASET_DIR,
+                        config.LABEL_DIR,
                     )
                 else:
                     no_label_files.append(filename)
@@ -86,7 +89,8 @@ def extract_text_from_pdfs():
                     try:
                         dest_no_label = config.PDF_NO_LABEL_DIR / filename
                         dest_no_label.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.move(pdf_path, dest_no_label)
+                        # shutil.move(pdf_path, dest_no_label)
+                        shutil.copy(pdf_path, dest_no_label)
                     except Exception as e:
                         logger.error(f"Error moving PDF {filename} to No Label: {e}")
             else:
@@ -102,7 +106,11 @@ def extract_text_from_pdfs():
             count_error += 1
             # Copy to error folder
             copy_file_and_label(
-                filename, config.PDF_ERROR_FILES_DIR, config.PDF_ERROR_LABELS_DIR
+                filename,
+                config.PDF_ERROR_FILES_DIR,
+                config.PDF_ERROR_LABELS_DIR,
+                config.DATASET_DIR,
+                config.LABEL_DIR,
             )
 
         if (i + 1) % 100 == 0:
