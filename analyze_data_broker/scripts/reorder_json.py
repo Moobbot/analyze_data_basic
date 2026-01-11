@@ -30,6 +30,7 @@ TARGET_ORDER = [
     "Foreign GST",
     "GST Equivalent",
     "GST ON (SR)",
+    "GST equivalent in SGD",
 ]
 
 

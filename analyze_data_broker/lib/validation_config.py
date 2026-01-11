@@ -13,11 +13,12 @@ TRANSACTION_KEYWORDS = {
         "Your Purchase",
         "New issue purchase",
         "SOLD to you as PRINCIPAL",
-        "have SOLD to you as PRINCIPAL",
         "BOUGHT for you as AGENT",
         "HAVE BOUGHT FOR",
-        "have BOUGHT for you as AGENT",
         "Receive against payment",
+    ],
+    "BUY CANCELLATION": [
+        "New issue purchase Cancellation",
     ],
     "SELL": [
         "Sale",
@@ -26,6 +27,27 @@ TRANSACTION_KEYWORDS = {
         "Redemption",
         "SOLD for you as AGENT",
         "BOUGHT from you as PRINCIPAL",
+    ],
+    "SELL CANCELLATION": [
+        "Your sale Cancellation",
+    ],
+    "ADJUSTMENT MAX. NOTIONAL": [
+        "Adjustment Max. Notional",
+    ],
+    "KNOCKOUT ADVICE": [
+        "Knockout Advice",
+    ],
+    "MATURITY": [
+        "Maturity",
+    ],
+    "PREPAYMENT FOR FUND SUBSCRIPTION": [
+        "Prepayment for fund subscription",
+    ],
+    "PREPAYMENT FOR FUND SUBSCRIPTION CORRECTION": [
+        "Prepayment for fund subscription Correction",
+    ],
+    "PREPAYMENT FOR FUND SUBSCRIPTION CANCELLATION": [
+        "Prepayment for fund subscription Cancellation",
     ],
 }
 

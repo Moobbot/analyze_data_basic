@@ -3,11 +3,45 @@ import os
 import re
 from datetime import datetime
 import shutil
+import sys
+
+# Assuming script is run from project root or analyze_data_broker directory
+# We need to find the root where common_lib is located.
+# common_lib is at d:\Work\Clients\AIRC\product\ACPA\analyze_data_basic\common_lib
+# convert_date_format.py is at analyze_data_broker\scripts
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Should go up two levels from verify/scripts to get to analyze_data_basic root
+# Layout:
+# analyze_data_basic/
+#   analyze_data_broker/
+#     scripts/
+#       convert_date_format.py
+#   common_lib/
+#     date_utils.py
+
+# Go up from scripts -> analyze_data_broker -> analyze_data_basic
+root_dir = os.path.abspath(os.path.join(current_dir, "../../"))
+
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+
+try:
+    from common_lib import date_utils
+except ImportError:
+    # If standard import fails, try direct path adjust just in case
+    # common_lib might be a namespace package or something else
+    sys.path.append(os.path.abspath(os.path.join(current_dir, "../../../")))
+    try:
+        from common_lib import date_utils
+    except ImportError:
+        print(f"Error: Could not import common_lib.date_utils. sys.path: {sys.path}")
+        raise
 
 
 def convert_date_to_mm_dd_yyyy(date_str):
-    """Convert date string to MM/DD/YYYY format"""
-    if date_str is None or date_str == "":
+    """Convert date string to MM/DD/YYYY format using common_lib"""
+    if date_str is None or str(date_str).strip() == "":
         return date_str
 
     date_str = str(date_str).strip()
@@ -16,67 +50,11 @@ def convert_date_to_mm_dd_yyyy(date_str):
     if re.match(r"^\d{1,2}/\d{1,2}/\d{4}$", date_str):
         return date_str
 
-    # Month map
-    month_map = {
-        "jan": "01",
-        "feb": "02",
-        "mar": "03",
-        "apr": "04",
-        "may": "05",
-        "jun": "06",
-        "jul": "07",
-        "aug": "08",
-        "sep": "09",
-        "oct": "10",
-        "nov": "11",
-        "dec": "12",
-    }
+    # Use common_lib.date_utils calling validate_date
+    is_valid, parsed_date, fmt = date_utils.validate_date(date_str)
 
-    # Convert from DD.MM.YYYY format (e.g. 10.03.2025)
-    if re.match(r"^\d{1,2}\.\d{1,2}\.\d{4}$", date_str):
-        try:
-            date_obj = datetime.strptime(date_str, "%d.%m.%Y")
-            return date_obj.strftime("%m/%d/%Y")
-        except ValueError as e:
-            print(f"  Warning: Could not parse date '{date_str}': {e}")
-            return date_str
-
-    # Convert from DD-MMM-YYYY format (e.g. 25-Apr-2025)
-    match_dmy = re.match(r"^(\d{1,2})-([A-Za-z]{3})-(\d{4})$", date_str)
-    if match_dmy:
-        day, month_str, year = match_dmy.groups()
-        month = month_map.get(month_str.lower())
-        if month:
-            try:
-                # Create a date object to validate
-                date_obj = datetime(int(year), int(month), int(day))
-                return date_obj.strftime("%m/%d/%Y")
-            except ValueError:
-                pass
-
-    # Convert from DD-MMM-YY format (e.g. 26-May-25)
-    match_dmy_short = re.match(r"^(\d{1,2})-([A-Za-z]{3})-(\d{2})$", date_str)
-    if match_dmy_short:
-        day, month_str, year_short = match_dmy_short.groups()
-        month = month_map.get(month_str.lower())
-        if month:
-            year = int(year_short)
-            # Assume 20xx for year <= 50, 19xx for year > 50
-            full_year = 2000 + year if year <= 50 else 1900 + year
-            try:
-                date_obj = datetime(full_year, int(month), int(day))
-                return date_obj.strftime("%m/%d/%Y")
-            except ValueError:
-                pass
-
-    # Convert from YYYY-MM-DD format
-    if re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
-        try:
-            date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-            return date_obj.strftime("%m/%d/%Y")
-        except ValueError as e:
-            print(f"  Warning: Could not parse date '{date_str}': {e}")
-            return date_str
+    if is_valid and parsed_date:
+        return parsed_date.strftime("%m/%d/%Y")
 
     # If format is unknown, return as is
     print(f"  Warning: Unknown date format '{date_str}', keeping as is")
@@ -115,7 +93,16 @@ def convert_dates_in_json_files(directory_path, backup=True):
         try:
             # Read the JSON file
             with open(filepath, "r", encoding="utf-8") as f:
-                data = json.load(f)
+                json_content = json.load(f)
+
+            # Handle list vs dict
+            if isinstance(json_content, list):
+                if not json_content:
+                    print(f"Skipping empty list file: {filename}")
+                    continue
+                data = json_content[0]
+            else:
+                data = json_content
 
             # Track if this file was modified
             file_modified = False
@@ -123,6 +110,8 @@ def convert_dates_in_json_files(directory_path, backup=True):
 
             # Helper to find key case-insensitively and return (actual_key, value)
             def get_key_value_case_insensitive(data, search_key):
+                if not isinstance(data, dict):
+                    return None, None
                 for k, v in data.items():
                     if k.lower() == search_key.lower():
                         return k, v
@@ -161,7 +150,7 @@ def convert_dates_in_json_files(directory_path, backup=True):
 
                 # Write the modified data back
                 with open(filepath, "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=4, ensure_ascii=False)
+                    json.dump(json_content, f, indent=4, ensure_ascii=False)
 
                 modified_files += 1
                 total_dates_converted += dates_converted_in_file
@@ -192,7 +181,7 @@ def convert_dates_in_json_files(directory_path, backup=True):
 
 if __name__ == "__main__":
     # Path to Trade_Confirmation labels directory
-    trade_confirmation_dir = "datasets/labels/Trade_Confirmation"
+    trade_confirmation_dir = "datasets/labels/Contact_Note"
 
     if os.path.exists(trade_confirmation_dir):
         # Ask for confirmation
