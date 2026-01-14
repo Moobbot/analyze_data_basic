@@ -2,13 +2,12 @@ import os
 import csv
 import shutil
 import config
-import utils
 
 
 def filter_results():
     """
     Splits the main verification report into status-specific CSVs for easier review.
-    Creates: label_verification_missing.csv, label_verification_similar.csv
+    Creates: label_verification_missing.csv, label_verification_similar.csv (Defined in config)
     """
     print("\n>>> FILTERING VERIFICATION RESULTS (Creating Sub-reports)")
     input_csv = config.VERIFY_REPORT_CSV
@@ -17,8 +16,8 @@ def filter_results():
         print(f"Error: Input CSV not found: {input_csv}")
         return
 
-    output_missing = config.REVIEW_DIR / "label_verification_missing.csv"
-    output_similar = config.REVIEW_DIR / "label_verification_similar.csv"
+    output_missing = config.OUTPUT_FILTER_MISSING
+    output_similar = config.OUTPUT_FILTER_SIMILAR
 
     missing_rows = []
     similar_rows = []
@@ -99,12 +98,13 @@ def filter_verified_labels():
                 # Check if status is FOUND or any variant (explicit check)
                 accepted_statuses = [
                     "FOUND",
+                    "FOUND_ALIAS",
                     "FOUND_DATE_ALT_FORMAT",
                     "FOUND_CASE_INSENSITIVE",
                     "FOUND_NORMALIZED",
                     "FOUND_NORMALIZED_FUZZY",
-                    "FOUND_NUMERIC_FORMAT",
-                    "CHECK_DATE",  # Assuming CHECK_DATE needs manual review?
+                    # "FOUND_NUMERIC_FORMAT",
+                    # "CHECK_DATE",  # Assuming CHECK_DATE needs manual review?
                     # user script assumed CHECK_DATE is NOT an issue?
                     # Original script: accepted_statuses included CHECK_DATE.
                 ]
@@ -183,15 +183,11 @@ def filter_verified_labels():
                 # "Filter verified labels" usually implies moving out of the "working" set.
                 # I will use shutil.move as per the intent of "filtering".
 
-                dst_json.parent.mkdir(parents=True, exist_ok=True)
-                if not dst_json.exists():  # Don't overwrite if exists
-                    shutil.copy2(src_json, dst_json)  # Copy first
-                    # If successful, remove source?
-                    # Let's stick to copy for safety in this refactor unless user explicitly said "Move".
-                    # The original code had move commented.
+                # if not dst_json.exists():  # Don't overwrite if exists
+                # shutil.move(src_json, dst_json)
                 copied_json += 1
 
-                # Copy corresponding PDF file to files subfolder
+                # Move corresponding PDF file to files subfolder
                 pdf_filename = src_json.stem + ".pdf"
                 # Searching for PDF... assume dataset structure mirrors label structure?
                 # CSV filename is relative path "folder/file.json".
@@ -203,8 +199,8 @@ def filter_verified_labels():
 
                 if src_pdf.exists():
                     dst_pdf.parent.mkdir(parents=True, exist_ok=True)
-                    if not dst_pdf.exists():
-                        shutil.copy2(src_pdf, dst_pdf)
+                    # if not dst_pdf.exists():
+                    shutil.move(src_pdf, dst_pdf)
                     copied_pdf += 1
             else:
                 print(f"Warning: JSON file not found: {filename}")

@@ -2,6 +2,7 @@ import os
 import shutil
 import fitz  # PyMuPDF
 import config
+from pathlib import Path
 from common_lib.file_utils import (
     move_file_and_label,
     copy_file_and_label,
@@ -36,6 +37,7 @@ def extract_text_from_pdfs():
     error_files = []
     image_files = []
     no_label_files = []
+    page_info = []  # Lưu thông tin số trang của mỗi file
 
     # Get List of PDF files
     if not config.DATASET_DIR.exists():
@@ -61,10 +63,37 @@ def extract_text_from_pdfs():
 
         try:
             text_content = ""
+            page_count = 0
+            is_encrypted = False
+            is_empty = False
+            file_size = pdf_path.stat().st_size
+
             # PyMuPDF Open
             with fitz.open(pdf_path) as doc:
+                # Check if encrypted
+                is_encrypted = doc.is_encrypted
+
+                page_count = len(doc)
                 for page in doc:
                     text_content += page.get_text() + "\n"
+
+            # Kiểm tra text rỗng
+            clean_text = text_content.strip()
+            is_empty = len(clean_text) == 0
+
+            # Lưu thông tin chi tiết
+            page_info.append(
+                {
+                    "filename": filename,
+                    "pages": page_count,
+                    "text_length": len(clean_text),
+                    "is_empty": is_empty,
+                    "is_encrypted": is_encrypted,
+                    "file_size_kb": round(file_size / 1024, 2),
+                    "has_label": has_label,
+                    "status": "success",
+                }
+            )
 
             # Analyze extracted text
             clean_text = text_content.strip()
@@ -75,7 +104,7 @@ def extract_text_from_pdfs():
                     image_files.append(filename)
                     count_image_with_label += 1
                     # Move to image folder (PDF + Label)
-                    move_file_and_label(
+                    copy_file_and_label(
                         filename,
                         config.PDF_IMAGE_FILES_DIR,
                         config.PDF_IMAGE_LABELS_DIR,
@@ -90,7 +119,7 @@ def extract_text_from_pdfs():
                         dest_no_label = config.PDF_NO_LABEL_DIR / filename
                         dest_no_label.parent.mkdir(parents=True, exist_ok=True)
                         # shutil.move(pdf_path, dest_no_label)
-                        shutil.copy(pdf_path, dest_no_label)
+                        shutil.copy2(pdf_path, dest_no_label)
                     except Exception as e:
                         logger.error(f"Error moving PDF {filename} to No Label: {e}")
             else:
@@ -104,6 +133,24 @@ def extract_text_from_pdfs():
             logger.error(f"Error reading {filename}: {e}")
             error_files.append(f"{filename} | Error: {str(e)}")
             count_error += 1
+            # Lưu thông tin lỗi
+            try:
+                file_size = Path(pdf_path).stat().st_size
+            except:
+                file_size = 0
+
+            page_info.append(
+                {
+                    "filename": filename,
+                    "pages": "ERROR",
+                    "text_length": 0,
+                    "is_empty": True,
+                    "is_encrypted": False,
+                    "file_size_kb": round(file_size / 1024, 2),
+                    "has_label": has_label,
+                    "status": f"error: {str(e)[:50]}",
+                }
+            )
             # Copy to error folder
             copy_file_and_label(
                 filename,
@@ -117,6 +164,17 @@ def extract_text_from_pdfs():
             logger.info(f"Processed {i + 1}/{total_files} files")
 
     # Write Report Files
+    # 0. Page Information (Thông tin chi tiết PDF)
+    with open(config.PAGE_INFO_REPORT, "w", encoding="utf-8") as f:
+        f.write(
+            "Filename,Pages,TextLength,IsEmpty,IsEncrypted,FileSizeKB,HasLabel,Status\n"
+        )
+        for info in page_info:
+            f.write(
+                f"{info['filename']},{info['pages']},{info['text_length']},{info['is_empty']},{info['is_encrypted']},{info['file_size_kb']},{info['has_label']},\"{info['status']}\"\n"
+            )
+    logger.info(f"Page info report saved to: {config.PAGE_INFO_REPORT}")
+
     # 1. Error Files
     with open(config.ERROR_PDF_REPORT, "w", encoding="utf-8") as f:
         f.write(f"DANH SÁCH FILE LỖI KHÔNG ĐỌC ĐƯỢC ({len(error_files)} files)\n")

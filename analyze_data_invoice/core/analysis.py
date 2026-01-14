@@ -2,7 +2,7 @@ import os
 import csv
 from collections import Counter, defaultdict
 import config
-import utils
+from common_lib import text_utils
 
 
 def analyze_directories(
@@ -59,7 +59,7 @@ def analyze_directories(
                             "FileName": f,
                             "Extension": ext,
                             "SizeBytes": size,
-                            "ReadableSize": utils.format_size(size),
+                            "ReadableSize": text_utils.format_size(size),
                         }
                     )
         except Exception as e:
@@ -82,11 +82,11 @@ def analyze_directories(
             max_size = max(sizes)
             avg_size = sum(sizes) / len(sizes)
             report_lines.append(f"\n2. Thống kê kích thước file:")
-            report_lines.append(f"   - Nhỏ nhất: {utils.format_size(min_size)}")
-            report_lines.append(f"   - Lớn nhất: {utils.format_size(max_size)}")
-            report_lines.append(f"   - Trung bình: {utils.format_size(avg_size)}")
+            report_lines.append(f"   - Nhỏ nhất: {text_utils.format_size(min_size)}")
+            report_lines.append(f"   - Lớn nhất: {text_utils.format_size(max_size)}")
+            report_lines.append(f"   - Trung bình: {text_utils.format_size(avg_size)}")
             report_lines.append(
-                f"   - Khoảng kích thước: {utils.format_size(min_size)} - {utils.format_size(max_size)}"
+                f"   - Khoảng kích thước: {text_utils.format_size(min_size)} - {text_utils.format_size(max_size)}"
             )
 
         # 3. Non-PDF Files

@@ -1,11 +1,11 @@
 import os
 import config
-import utils
+from common_lib import file_utils, text_utils
 
 
 def compare_directories(output_file=config.DEFAULT_OUTPUT_DIFF):
-    dataset_files = utils.get_files_map_recursive(config.DATASET_DIR)
-    label_files = utils.get_files_map_recursive(config.LABEL_DIR)
+    dataset_files = file_utils.get_files_map_recursive(config.DATASET_DIR)
+    label_files = file_utils.get_files_map_recursive(config.LABEL_DIR)
 
     dataset_bases = set(dataset_files.keys())
     label_bases = set(label_files.keys())
@@ -41,7 +41,7 @@ def compare_directories(output_file=config.DEFAULT_OUTPUT_DIFF):
                 ext = full_path.suffix.lower()
                 try:
                     size_bytes = full_path.stat().st_size
-                    readable_size = utils.format_size(size_bytes)
+                    readable_size = text_utils.format_size(size_bytes)
                 except:
                     readable_size = "N/A"
 
@@ -61,7 +61,7 @@ def compare_directories(output_file=config.DEFAULT_OUTPUT_DIFF):
                 ext = full_path.suffix.lower()
                 try:
                     size_bytes = full_path.stat().st_size
-                    readable_size = utils.format_size(size_bytes)
+                    readable_size = text_utils.format_size(size_bytes)
                 except:
                     readable_size = "N/A"
 

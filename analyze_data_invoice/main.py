@@ -1,10 +1,8 @@
 import sys
 from pathlib import Path
 
-# Add project root to sys.path to ensure imports work if run from subdirs (though usually run from root)
-sys.path.append(str(Path(__file__).resolve().parent))
-# Add parent directory to allow importing common_lib
-sys.path.append(str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import config
 import core.cleaning
@@ -21,50 +19,39 @@ import reports.status_details
 
 def run_pipeline():
     print("=" * 60)
-    print("      INVOICE DATA AUDIT PIPELINE (REFACTORED)")
+    print("INVOICE DATA AUDIT PIPELINE")
     print("=" * 60)
 
-    # 1. Cleaning
-    print("\n>>> [STEP 1] CLEANING JSON DATA (FORMATS)")
+    print("\n[1] CLEANING JSON DATA")
     core.cleaning.clean_json_files()
 
-    # 2. Analysis (Initial)
-    print("\n>>> [STEP 2] ANALYZING FILE STATISTICS")
+    print("\n[2] ANALYZING FILES")
     core.analysis.analyze_directories()
 
-    # 3. Extraction
-    print("\n>>> [STEP 3] EXTRACTING TEXT FROM PDFS")
+    print("\n[3] EXTRACTING PDF TEXT")
     core.extraction.extract_text_from_pdfs()
 
-    # 4. Verification
-    print("\n>>> [STEP 4] VERIFYING LABELS VS EXTRACTED TEXT")
+    print("\n[4] VERIFYING LABELS")
     core.verification.verify_labels()
 
-    # 5. Separation (Move Files)
-    print("\n>>> [STEP 5] SEPARATING FILES (MOVING PROBLEM FILES)")
+    print("\n[5] SEPARATING FILES")
     core.separation.copy_files()
 
-    # 6. Filtering (Post-Verification)
-    print("\n>>> [STEP 6] FILTERING RESULTS & VERIFIED FILES")
+    print("\n[6] FILTERING RESULTS")
     core.filtering.filter_results()
-    # core.filtering.filter_verified_labels() # Uncomment to enable moving verified files to 'true' folder
 
-    # 7. Comparison (Final Check)
-    print("\n>>> [STEP 7] COMPARING DATASET VS LABEL (DIFFERENCES)")
+    print("\n[7] COMPARING DATASET")
     core.comparison.compare_directories()
 
-    # 8. Reporting
-    print("\n>>> [STEP 8] GENERATING FINAL REPORTS")
+    print("\n[8] GENERATING REPORTS")
     reports.merger.merge()
     reports.generator.generate_reports()
-
-    print("\n   [+] Generating Detailed Status Report...")
     reports.status_details.generate_status_report()
 
     print("\n" + "=" * 60)
-    print("      PIPELINE COMPLETE")
+    print("PIPELINE COMPLETE")
     print("=" * 60)
-    print(f"Check output in: {config.REVIEW_DIR}")
+    print(f"Output: {config.REVIEW_DIR}")
 
 
 if __name__ == "__main__":

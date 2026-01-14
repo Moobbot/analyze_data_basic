@@ -1,6 +1,5 @@
 import os
 import config
-import utils
 
 
 def read_lines(path):
@@ -41,7 +40,7 @@ def generate_reports():
 
     # 3. Label Verification
     missing_csv = (
-        config.REVIEW_DIR / "label_verification_missing.csv"
+        config.OUTPUT_FILTER_MISSING
     )  # Actually this file isn't created by verify_labels yet, relying on VERIFY_REPORT_CSV mostly.
     # But wait, original code referenced "label_verification_missing.csv".
     # My refactored verify_labels didn't explicitly create it yet, only the main CSV.

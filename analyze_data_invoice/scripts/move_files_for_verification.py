@@ -2,10 +2,14 @@ import os
 import shutil
 import sys
 
-# Add parent directory to path to import config and utils
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add parent directory to path to import config
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, parent_dir)
+# Add grandparent directory to path to import common_lib
+sys.path.insert(0, os.path.dirname(parent_dir))
+
 import config
-import utils
+from common_lib import file_utils
 
 # Define the destination folder name
 # Files will be moved to: <script_directory>/verification_needed
@@ -28,7 +32,7 @@ def find_and_move_files(json_path):
     # 1. Move the JSON file itself
     if os.path.exists(json_path):
         print(f"Processing JSON: {json_path}")
-        utils.move_file_safe(json_path, dest_dir)
+        file_utils.move_file_safe(json_path, dest_dir)
     else:
         print(f"Error: JSON file not found at {json_path}")
         # We continue to try to find other files based on the name of the json input
@@ -56,7 +60,7 @@ def find_and_move_files(json_path):
         print(f"Error: Dataset directory not found: {dataset_dir}")
 
     if pdf_path:
-        utils.move_file_safe(pdf_path, dest_dir)
+        file_utils.move_file_safe(pdf_path, dest_dir)
     else:
         print(
             f"Error: Could not find corresponding PDF for '{base_name}' in {dataset_dir}"
@@ -70,7 +74,7 @@ def find_and_move_files(json_path):
 
     if os.path.exists(txt_path):
         print(f"Found TXT: {txt_path}")
-        utils.move_file_safe(txt_path, dest_dir)
+        file_utils.move_file_safe(txt_path, dest_dir)
     else:
         print(f"Warning: Text file not found at {txt_path}")
 

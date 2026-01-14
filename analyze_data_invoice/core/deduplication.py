@@ -1,7 +1,8 @@
 import os
 import shutil
 import config
-import utils
+from common_lib import file_utils
+
 
 def find_and_move_duplicates():
     print(">>> STARTING DUPLICATE DETECTION")
@@ -21,7 +22,7 @@ def find_and_move_duplicates():
         # We need relative path for map or absolute? Original used relative filename (list_files_recursive).
         # But get_json_content_hash needs absolute.
         # Let's verify utils.get_json_content_hash. It likely takes path.
-        file_hash = utils.get_json_content_hash(str(file_path))
+        file_hash = file_utils.get_json_content_hash(str(file_path))
 
         if file_hash:
             if file_hash not in content_map:

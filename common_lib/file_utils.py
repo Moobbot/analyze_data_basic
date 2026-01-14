@@ -313,8 +313,8 @@ def move_file_and_label(
 
     if source_file.exists():
         try:
-            # shutil.move(str(source_file), str(dest_file))
-            shutil.copy(str(source_file), str(dest_file))
+            shutil.move(str(source_file), str(dest_file))
+            # shutil.copy2(str(source_file), str(dest_file))
             file_moved = True
         except Exception as e:
             print(f"  Error moving file {filename}: {e}")
@@ -329,8 +329,8 @@ def move_file_and_label(
 
     if source_label.exists():
         try:
-            # shutil.move(str(source_label), str(dest_label))
-            shutil.copy(str(source_label), str(dest_label))
+            shutil.move(str(source_label), str(dest_label))
+            # shutil.copy2(str(source_label), str(dest_label))
             label_moved = True
         except Exception as e:
             print(f"  Error moving label {label_filename}: {e}")

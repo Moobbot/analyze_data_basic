@@ -1,8 +1,15 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+cleaning.py
+JSON data validation and cleaning
+"""
+
 import json
 import logging
 from pathlib import Path
 import config
-import utils
+from common_lib import date_utils
 
 # Setup Logger
 logger = logging.getLogger("json_cleaner")
@@ -10,16 +17,14 @@ logger.setLevel(logging.INFO)
 # Prevent duplicate handlers if module is reloaded
 if not logger.handlers:
     c_handler = logging.StreamHandler()
-    f_handler = logging.FileHandler(
-        config.REVIEW_DIR / "json_validation_log.txt", encoding="utf-8", mode="w"
-    )
+    f_handler = logging.FileHandler(config.LOG_VALIDATION, encoding="utf-8", mode="w")
     formatter = logging.Formatter("%(message)s")
     c_handler.setFormatter(formatter)
     f_handler.setFormatter(formatter)
     logger.addHandler(c_handler)
     logger.addHandler(f_handler)
 
-# Define validations
+# Define schema for validation
 SCHEMA = {
     "Date": ("DATE", False),
     "Customer": ("STRING", False),
@@ -38,21 +43,22 @@ SCHEMA = {
 
 
 def validate_and_clean_value(key, value, expected_type, auto_convert):
+    """Validate and convert a field value"""
     if value is None:
         return True, value, False
 
     if expected_type == "DATE":
         if not isinstance(value, str):
             return False, value, False
-        is_valid, _, _ = utils.validate_date(value)
+        is_valid, _, _ = date_utils.validate_date(value)
         return is_valid, value, False
 
-    elif expected_type == "STRING":
+    if expected_type == "STRING":
         if isinstance(value, str):
             return True, value, False
         return False, value, False
 
-    elif expected_type == "FLOAT":
+    if expected_type == "FLOAT":
         if isinstance(value, (int, float)):
             return True, value, False
 
@@ -69,6 +75,7 @@ def validate_and_clean_value(key, value, expected_type, auto_convert):
 
 
 def process_file(file_path):
+    """Process a single JSON file"""
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -79,6 +86,7 @@ def process_file(file_path):
     modified = False
     errors = []
 
+    # Normalize data structure
     if isinstance(data, dict):
         items_to_check = [data]
     elif isinstance(data, list):
@@ -91,20 +99,22 @@ def process_file(file_path):
             continue
 
         for key, (expected_type, auto_convert) in SCHEMA.items():
-            if key in item:
-                val = item[key]
-                is_valid, new_val, was_modified = validate_and_clean_value(
-                    key, val, expected_type, auto_convert
+            if key not in item:
+                continue
+
+            val = item[key]
+            is_valid, new_val, was_modified = validate_and_clean_value(
+                key, val, expected_type, auto_convert
+            )
+
+            if was_modified:
+                item[key] = new_val
+                modified = True
+
+            if not is_valid:
+                errors.append(
+                    f"  - Key '{key}' has invalid value: {repr(val)} (Expected {expected_type})"
                 )
-
-                if was_modified:
-                    item[key] = new_val
-                    modified = True
-
-                if not is_valid:
-                    errors.append(
-                        f"  - Key '{key}' has invalid value: {repr(val)} (Expected {expected_type})"
-                    )
 
     if errors:
         logger.info(f"[WARNING] Issues in {file_path}:")
@@ -125,27 +135,28 @@ def process_file(file_path):
 
 
 def clean_json_files():
+    """Clean all JSON files in target directory"""
     target_dir = config.LABEL_DIR
 
     if not target_dir.exists():
-        logger.info(f"Directory not found: {target_dir}")
+        logger.info(f"❌ Thư mục không tồn tại: {target_dir}")
         return
 
-    logger.info(f"Scanning directory: {target_dir}")
+    logger.info(f"🔍 Quét thư mục: {target_dir}")
 
     count = 0
     updated_count = 0
 
     files = list(target_dir.rglob("*.json"))
-    logger.info(f"Found {len(files)} JSON files.")
+    logger.info(f"✅ Tìm thấy {len(files)} file JSON")
 
     for file_path in files:
         if process_file(file_path):
             updated_count += 1
         count += 1
 
-    logger.info(f"Finished. Processed {count} files. Updated {updated_count} files.")
-    logger.info(f"Log saved to json_validation_log.txt")
+    logger.info(f"✅ Hoàn tất. Xử lý {count} file. Cập nhật {updated_count} file.")
+    logger.info(f"📁 Log lưu tại {config.LOG_VALIDATION}")
 
 
 if __name__ == "__main__":

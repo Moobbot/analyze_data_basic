@@ -226,7 +226,13 @@ def audit_ambiguous_dates(directory_path):
 
 
 if __name__ == "__main__":
-    target_dir = Path(__file__).parent.parent / "datasets" / "data-all" / "labels"
+    target_dir = (
+        Path(__file__).parent.parent
+        / "datasets"
+        / "data-all"
+        / "true-2026-01-11"
+        / "labels"
+    )
 
     if not target_dir.exists():
         target_dir = Path(

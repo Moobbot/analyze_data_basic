@@ -1,7 +1,7 @@
 import os
 import shutil
 import config
-import utils
+from common_lib import file_utils
 
 
 def copy_files():
@@ -11,8 +11,8 @@ def copy_files():
     config.DEST_LABEL_MISSING_PDF.mkdir(parents=True, exist_ok=True)
 
     print("Scanning files recursively...")
-    dataset_map = utils.get_files_map_recursive(config.DATASET_DIR)
-    label_map = utils.get_files_map_recursive(config.LABEL_DIR)
+    dataset_map = file_utils.get_files_map_recursive(config.DATASET_DIR)
+    label_map = file_utils.get_files_map_recursive(config.LABEL_DIR)
 
     dataset_bases = set(dataset_map.keys())
     label_bases = set(label_map.keys())

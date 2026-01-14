@@ -1,6 +1,6 @@
 import os
 import config
-import utils
+
 from datetime import datetime
 
 
