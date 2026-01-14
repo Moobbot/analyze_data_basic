@@ -52,7 +52,8 @@ def generate_status_report(csv_path_str=None):
         return
 
     # Generate Output Report
-    output_report = csv_path.parent / "status_statistics_report.txt"
+    # Generate Output Report
+    output_report = config.STATUS_STATS_REPORT
 
     with open(output_report, "w", encoding="utf-8") as f:
         f.write("DETAILED STATUS STATISTICS REPORT\n")

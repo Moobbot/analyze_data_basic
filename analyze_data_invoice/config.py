@@ -50,6 +50,7 @@ NO_LABEL_PDF_REPORT = REPORT_DIR / "pdf_no_label_files.txt"
 # Label Verification Reports
 VERIFY_REPORT_CSV = REPORT_DIR / "label_verification.csv"
 VERIFY_REPORT_TXT = REPORT_DIR / "label_verification_report.txt"
+STATUS_STATS_REPORT = REPORT_DIR / "status_statistics_report.txt"
 
 # Default Paths (for standalone execution compatibility)
 DEFAULT_OUTPUT_CSV = BASE_DIR / OUTPUT_CSV_NAME

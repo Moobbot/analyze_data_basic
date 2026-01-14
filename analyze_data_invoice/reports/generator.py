@@ -21,8 +21,8 @@ def generate_reports():
     print("Generating Final Reports...")
 
     # Output Paths
-    report_overview = config.BASE_DIR / "General_Overview_Report.md"
-    report_errors = config.BASE_DIR / "Detailed_Error_Report.md"
+    report_overview = config.REVIEW_DIR / "General_Overview_Report.md"
+    report_errors = config.REVIEW_DIR / "Detailed_Error_Report.md"
 
     # Gather Data
     # 1. File Stats

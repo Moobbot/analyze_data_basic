@@ -11,7 +11,7 @@ logger.setLevel(logging.INFO)
 if not logger.handlers:
     c_handler = logging.StreamHandler()
     f_handler = logging.FileHandler(
-        "json_validation_log.txt", encoding="utf-8", mode="w"
+        config.REVIEW_DIR / "json_validation_log.txt", encoding="utf-8", mode="w"
     )
     formatter = logging.Formatter("%(message)s")
     c_handler.setFormatter(formatter)
