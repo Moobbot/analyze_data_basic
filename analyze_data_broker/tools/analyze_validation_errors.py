@@ -1,0 +1,222 @@
+# analyze_validation_errors.py
+"""
+Analyze validation errors and create comprehensive reports.
+"""
+
+import os
+import sys
+import csv
+import json
+from collections import defaultdict, Counter
+
+# Add parent directory to path
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, parent_dir)
+
+
+def analyze_csv(csv_path):
+    """Analyze validation results CSV and generate detailed reports."""
+
+    # Read CSV
+    results = []
+    with open(csv_path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            results.append(row)
+
+    # Statistics
+    total = len(results)
+    valid = sum(1 for r in results if r["is_valid"].lower() == "true")
+    invalid = total - valid
+
+    # Group by schema
+    by_schema = defaultdict(list)
+    for r in results:
+        schema = r["schema_detected"] or "Unknown"
+        by_schema[schema].append(r)
+
+    # Error analysis
+    error_patterns = Counter()
+    error_by_schema = defaultdict(Counter)
+
+    for r in results:
+        if r["is_valid"].lower() != "true":
+            schema = r["schema_detected"] or "Unknown"
+            errors = r["errors"]
+            if errors:
+                # Split multiple errors
+                error_list = [e.strip() for e in errors.split(";")]
+                for error in error_list:
+                    # Categorize errors
+                    if "is required" in error:
+                        error_type = "Missing Required Field"
+                        # Extract field name
+                        if ":" in error:
+                            field = error.split(":")[0].strip()
+                            error_key = f"{error_type}: {field}"
+                        else:
+                            error_key = error_type
+                    elif "Unexpected fields" in error:
+                        error_type = "Unexpected Fields"
+                        error_key = error_type
+                    elif "Invalid date format" in error:
+                        error_type = "Invalid Date Format"
+                        error_key = error_type
+                    elif "Expected number" in error or "Expected string" in error:
+                        error_type = "Type Mismatch"
+                        error_key = error_type
+                    elif "does not match pattern" in error:
+                        error_type = "Pattern Mismatch"
+                        error_key = error_type
+                    else:
+                        error_key = error[:50]  # First 50 chars
+
+                    error_patterns[error_key] += 1
+                    error_by_schema[schema][error_key] += 1
+
+    # Generate reports
+    output_dir = os.path.dirname(csv_path)
+    base_name = os.path.splitext(os.path.basename(csv_path))[0]
+
+    # 1. Error Analysis Report
+    error_report_path = os.path.join(output_dir, f"{base_name}_error_analysis.txt")
+    with open(error_report_path, "w", encoding="utf-8") as f:
+        f.write("=" * 80 + "\n")
+        f.write("VALIDATION ERROR ANALYSIS\n")
+        f.write("=" * 80 + "\n\n")
+
+        f.write(f"Total Files: {total}\n")
+        f.write(f"Valid: {valid} ({valid/total*100:.1f}%)\n")
+        f.write(f"Invalid: {invalid} ({invalid/total*100:.1f}%)\n\n")
+
+        f.write("=" * 80 + "\n")
+        f.write("TOP ERROR PATTERNS (Overall)\n")
+        f.write("=" * 80 + "\n")
+        for error, count in error_patterns.most_common(20):
+            f.write(f"{count:4d} files: {error}\n")
+
+        f.write("\n" + "=" * 80 + "\n")
+        f.write("ERRORS BY SCHEMA TYPE\n")
+        f.write("=" * 80 + "\n")
+        for schema in sorted(error_by_schema.keys()):
+            f.write(f"\n{schema}:\n")
+            f.write("-" * 40 + "\n")
+            for error, count in error_by_schema[schema].most_common(10):
+                f.write(f"  {count:4d} files: {error}\n")
+
+    print(f"Created error analysis: {error_report_path}")
+
+    # 2. Files by Schema Type
+    for schema, files in by_schema.items():
+        schema_file_list = os.path.join(output_dir, f"{base_name}_files_{schema}.txt")
+        with open(schema_file_list, "w", encoding="utf-8") as f:
+            f.write(f"Schema Type: {schema}\n")
+            f.write(f"Total Files: {len(files)}\n")
+            f.write(
+                f"Valid: {sum(1 for r in files if r['is_valid'].lower() == 'true')}\n"
+            )
+            f.write(
+                f"Invalid: {sum(1 for r in files if r['is_valid'].lower() != 'true')}\n\n"
+            )
+
+            f.write("=" * 80 + "\n")
+            f.write("VALID FILES\n")
+            f.write("=" * 80 + "\n")
+            for r in files:
+                if r["is_valid"].lower() == "true":
+                    f.write(f"{r['file']}\n")
+
+            f.write("\n" + "=" * 80 + "\n")
+            f.write("INVALID FILES (with errors)\n")
+            f.write("=" * 80 + "\n")
+            for r in files:
+                if r["is_valid"].lower() != "true":
+                    f.write(f"\n{r['file']}:\n")
+                    if r["errors"]:
+                        errors = r["errors"].split(";")
+                        for error in errors:
+                            f.write(f"  - {error.strip()}\n")
+
+        print(f"Created file list for {schema}: {schema_file_list}")
+
+    # 3. Summary by Schema
+    summary_path = os.path.join(output_dir, f"{base_name}_schema_summary.txt")
+    with open(summary_path, "w", encoding="utf-8") as f:
+        f.write("=" * 80 + "\n")
+        f.write("VALIDATION SUMMARY BY SCHEMA TYPE\n")
+        f.write("=" * 80 + "\n\n")
+
+        for schema in sorted(by_schema.keys()):
+            files = by_schema[schema]
+            valid_count = sum(1 for r in files if r["is_valid"].lower() == "true")
+            invalid_count = len(files) - valid_count
+
+            f.write(f"{schema}:\n")
+            f.write(f"  Total:   {len(files):4d} files\n")
+            f.write(
+                f"  Valid:   {valid_count:4d} files ({valid_count/len(files)*100:5.1f}%)\n"
+            )
+            f.write(
+                f"  Invalid: {invalid_count:4d} files ({invalid_count/len(files)*100:5.1f}%)\n"
+            )
+            f.write("\n")
+
+    print(f"Created schema summary: {summary_path}")
+
+    # 4. Sample Invalid Files for Each Schema
+    sample_path = os.path.join(output_dir, f"{base_name}_sample_errors.txt")
+    with open(sample_path, "w", encoding="utf-8") as f:
+        f.write("=" * 80 + "\n")
+        f.write("SAMPLE INVALID FILES BY SCHEMA (First 5 per schema)\n")
+        f.write("=" * 80 + "\n\n")
+
+        for schema in sorted(by_schema.keys()):
+            invalid_files = [
+                r for r in by_schema[schema] if r["is_valid"].lower() != "true"
+            ]
+            if invalid_files:
+                f.write(f"\n{schema}:\n")
+                f.write("-" * 80 + "\n")
+                for r in invalid_files[:5]:
+                    f.write(f"\nFile: {r['file']}\n")
+                    if r["errors"]:
+                        f.write(f"Errors:\n")
+                        errors = r["errors"].split(";")
+                        for error in errors:
+                            f.write(f"  - {error.strip()}\n")
+
+    print(f"Created sample errors: {sample_path}")
+
+    return {
+        "total": total,
+        "valid": valid,
+        "invalid": invalid,
+        "by_schema": {k: len(v) for k, v in by_schema.items()},
+        "error_patterns": dict(error_patterns.most_common(10)),
+    }
+
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) < 2:
+        print("Usage: python analyze_validation_errors.py <csv_file>")
+        sys.exit(1)
+
+    csv_file = sys.argv[1]
+    if not os.path.exists(csv_file):
+        print(f"Error: File not found: {csv_file}")
+        sys.exit(1)
+
+    print(f"Analyzing: {csv_file}\n")
+    stats = analyze_csv(csv_file)
+
+    print("\n" + "=" * 80)
+    print("ANALYSIS COMPLETE")
+    print("=" * 80)
+    print(f"Total Files: {stats['total']}")
+    print(f"Valid: {stats['valid']} ({stats['valid']/stats['total']*100:.1f}%)")
+    print(f"Invalid: {stats['invalid']} ({stats['invalid']/stats['total']*100:.1f}%)")
+    print("\nTop Error Patterns:")
+    for error, count in list(stats["error_patterns"].items())[:5]:
+        print(f"  {count:4d} files: {error}")

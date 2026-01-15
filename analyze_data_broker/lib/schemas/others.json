@@ -1,0 +1,132 @@
+{
+  "schema_name": "Others (I.4)",
+  "description": "Schema for miscellaneous or other types of transactions",
+  "fields": {
+    "Client name": {
+      "type": "text",
+      "required": true,
+      "description": "Name of the client"
+    },
+    "Description": {
+      "type": "text",
+      "required": false,
+      "nullable": true,
+      "description": "Description of the transaction"
+    },
+    "Securities ID/ Ref-No.": {
+      "type": "text",
+      "required": false,
+      "nullable": true,
+      "description": "Securities ID or reference number"
+    },
+    "Securities ID": {
+      "type": "text",
+      "required": false,
+      "nullable": true,
+      "description": "Securities ID (alternative field name)"
+    },
+    "Transaction type": {
+      "type": "text",
+      "required": false,
+      "nullable": true,
+      "description": "Type of transaction"
+    },
+    "Trade date": {
+      "type": "date",
+      "format": "MM/DD/YYYY",
+      "required": false,
+      "nullable": true,
+      "description": "Trade execution date"
+    },
+    "Settlement date": {
+      "type": "date",
+      "format": "MM/DD/YYYY",
+      "required": false,
+      "nullable": true,
+      "description": "Settlement date"
+    },
+    "Currency": {
+      "type": "text",
+      "required": false,
+      "nullable": true,
+      "validation": {
+        "pattern": "^[A-Z]{3}$"
+      },
+      "description": "Currency code"
+    },
+    "Quantity": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Quantity involved"
+    },
+    "Foreign Unit Price": {
+      "type": "mixed",
+      "allowed_types": [
+        "number_float",
+        "text_percentage"
+      ],
+      "required": false,
+      "nullable": true,
+      "description": "Unit price or interest rate in foreign currency (can be number or percentage string like '4.716%')"
+    },
+    "Foreign Gross Amount": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Gross amount or interest in foreign currency"
+    },
+    "Tax rate (%)": {
+      "type": "mixed",
+      "allowed_types": [
+        "number_float",
+        "text_percentage"
+      ],
+      "required": false,
+      "nullable": true,
+      "description": "Tax rate percentage (can be number or percentage string like '9.00%')"
+    },
+    "Tax amount": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Tax amount"
+    },
+    "Foreign Net Amount": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Net amount in foreign currency"
+    },
+    "Payment mode": {
+      "type": "text",
+      "required": false,
+      "nullable": true,
+      "description": "Payment method or mode"
+    },
+    "Account no.": {
+      "type": "text",
+      "required": false,
+      "nullable": true,
+      "description": "Account number"
+    },
+    "Exrate to GST": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Exchange rate to GST currency"
+    },
+    "Amount (SGD)": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Amount in SGD"
+    }
+  }
+}

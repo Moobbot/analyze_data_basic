@@ -1,0 +1,90 @@
+{
+  "schema_name": "Positions (I.5)",
+  "description": "Schema for portfolio position information",
+  "fields": {
+    "Portfolio No.": {
+      "type": "text",
+      "required": true,
+      "description": "Portfolio identifier"
+    },
+    "Type": {
+      "type": "text",
+      "required": true,
+      "description": "Type of position (e.g., equity, bond, cash)"
+    },
+    "Account No": {
+      "type": "text",
+      "required": false,
+      "nullable": true,
+      "description": "Account number"
+    },
+    "Currency": {
+      "type": "text",
+      "required": true,
+      "validation": {
+        "pattern": "^[A-Z]{3}$"
+      },
+      "description": "Currency code"
+    },
+    "Quantity/ Amount": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Quantity of securities or cash amount"
+    },
+    " Security ID": {
+      "type": "text",
+      "required": false,
+      "nullable": true,
+      "description": "Security identifier (note: has leading space in original spec)"
+    },
+    "Security name": {
+      "type": "text",
+      "required": false,
+      "nullable": true,
+      "description": "Name of the security"
+    },
+    "Cost price": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Original cost/purchase price"
+    },
+    "Market price": {
+      "type": "mixed",
+      "allowed_types": [
+        "number_float",
+        "text_percentage"
+      ],
+      "required": false,
+      "nullable": true,
+      "examples": [
+        "123.45",
+        "109.18%"
+      ],
+      "description": "Current market price, can be numeric or percentage"
+    },
+    "Market value": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Total market value of position"
+    },
+    "Accrued interest": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Accrued interest on the position"
+    },
+    "Valuation date": {
+      "type": "date",
+      "format": "MM/DD/YYYY",
+      "required": true,
+      "description": "Date of position valuation"
+    }
+  }
+}

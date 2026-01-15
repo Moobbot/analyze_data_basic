@@ -1,0 +1,102 @@
+{
+  "schema_name": "Dividend Information (I.2)",
+  "description": "Schema for dividend payment information",
+  "fields": {
+    "Ex-Date": {
+      "type": "date",
+      "format": "MM/DD/YYYY",
+      "required": true,
+      "description": "Ex-dividend date - the cutoff date to be eligible for dividend"
+    },
+    "Payment Date": {
+      "type": "date",
+      "format": "MM/DD/YYYY",
+      "required": true,
+      "description": "Date when dividend is paid"
+    },
+    "Securities ID": {
+      "type": "text",
+      "required": true,
+      "description": "Unique identifier for the security"
+    },
+    "Dividend Rate": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "examples": [
+        "3",
+        "0.06"
+      ],
+      "description": "Dividend rate per share (can be absolute amount or percentage)"
+    },
+    "WHT Rate": {
+      "type": "mixed",
+      "allowed_types": [
+        "text",
+        "text_percentage"
+      ],
+      "required": false,
+      "examples": [
+        "30%",
+        "0.30"
+      ],
+      "description": "Withholding tax rate as text or percentage string"
+    },
+    "Name/ Security": {
+      "type": "text",
+      "required": true,
+      "description": "Name or description of the security"
+    },
+    "Client name": {
+      "type": "text",
+      "required": true,
+      "description": "Name of the client"
+    },
+    "Currency": {
+      "type": "text",
+      "required": true,
+      "validation": {
+        "pattern": "^[A-Z]{3}$"
+      },
+      "description": "Currency code (ISO 4217)"
+    },
+    "Units": {
+      "type": "number",
+      "subtype": "float",
+      "required": true,
+      "description": "Number of units/shares held"
+    },
+    "Gross Dividend Amount (Local)": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Gross dividend amount in local currency before tax"
+    },
+    "WHT Amount": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "description": "Withholding tax amount deducted"
+    },
+    "Net Dividend Amount (Local)": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "description": "Net dividend amount after withholding tax"
+    },
+    "Net consideration": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Net consideration in base currency"
+    },
+    "Account no.": {
+      "type": "text",
+      "required": false,
+      "nullable": true,
+      "description": "Account number for the dividend payment"
+    }
+  }
+}

@@ -1,0 +1,181 @@
+{
+  "schema_name": "Trade Information (I.1)",
+  "description": "Schema for trade/transaction data including buy, sell, and related operations",
+  "fields": {
+    "Transaction Type": {
+      "type": "text",
+      "required": true,
+      "allowed_values": [
+        "BUY",
+        "SELL",
+        "BUY CANCELLATION",
+        "SELL CANCELLATION",
+        "ADJUSTMENT MAX. NOTIONAL",
+        "KNOCKOUT ADVICE",
+        "MATURITY",
+        "PREPAYMENT FOR FUND SUBSCRIPTION",
+        "PREPAYMENT FOR FUND SUBSCRIPTION CORRECTION",
+        "PREPAYMENT FOR FUND SUBSCRIPTION CANCELLATION"
+      ],
+      "description": "Type of transaction - validated against keywords in text"
+    },
+    "Trade Date": {
+      "type": "date",
+      "format": "MM/DD/YYYY",
+      "required": true,
+      "description": "Date when the trade was executed - validated in text"
+    },
+    "Settlement Date": {
+      "type": "date",
+      "format": "MM/DD/YYYY",
+      "required": true,
+      "description": "Date when the trade settles - validated in text"
+    },
+    "Securities ID": {
+      "type": "text",
+      "required": true,
+      "validation": {
+        "length": 12,
+        "description": "ISIN format - exactly 12 characters"
+      },
+      "description": "ISIN code for the security"
+    },
+    "Quantity": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "description": "Quantity traded - validated as numeric and presence in text"
+    },
+    "Foreign Unit Price": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "description": "Price per unit in foreign currency - validated as numeric and presence in text"
+    },
+    "Foreign Gross Consideration": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "description": "Gross amount in foreign currency - validated as numeric and presence in text"
+    },
+    "Foreign Net Consideration": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "description": "Net amount in foreign currency - validated as numeric and presence in text"
+    },
+    "Net Consideration": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "description": "Net amount in base currency - validated as numeric and presence in text"
+    },
+    "Exec Commission": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "description": "Execution commission - validated as numeric and presence in text"
+    },
+    "Client name": {
+      "type": "text",
+      "required": true,
+      "description": "Name of the client - validated as string and presence in text"
+    },
+    "Name/ Security": {
+      "type": "text",
+      "required": true,
+      "description": "Name or description of the security - validated as string and presence in text"
+    },
+    "Currency": {
+      "type": "text",
+      "required": true,
+      "validation": {
+        "pattern": "^[A-Z]{3}$"
+      },
+      "description": "Currency code (ISO 4217) - validated as string and presence in text"
+    },
+    "Account no.": {
+      "type": "text",
+      "required": false,
+      "nullable": true,
+      "description": "Account number - optional field"
+    },
+    "Accrued Interest": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Accrued interest amount - optional field"
+    },
+    "Result Commission": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Result commission fees"
+    },
+    "Research Commission": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Research commission fees"
+    },
+    "Total Commission": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Total commission amount"
+    },
+    "Local Fee": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Local fees charged"
+    },
+    "Local Tax": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Local tax amount"
+    },
+    "Stamp Duty": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Stamp duty charges"
+    },
+    "Foreign GST": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Foreign GST amount"
+    },
+    "GST Equivalent": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "GST equivalent amount"
+    },
+    "GST ON (SR)": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "GST on standard rate"
+    },
+    "GST equivalent in SGD": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "GST equivalent amount in SGD"
+    }
+  }
+}

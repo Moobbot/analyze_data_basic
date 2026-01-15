@@ -1,0 +1,107 @@
+{
+  "schema_name": "Bank Account Transaction (Account Statements)",
+  "description": "Schema for bank account statements with transaction records. Debits are negative, Credits are positive.",
+  "fields": {
+    "Account no.": {
+      "type": "text",
+      "required": true,
+      "description": "Bank account number"
+    },
+    "Currency": {
+      "type": "text",
+      "required": true,
+      "validation": {
+        "pattern": "^[A-Z]{3}$"
+      },
+      "description": "Account currency code (e.g., HKD, USD, SGD)"
+    },
+    "Records": {
+      "type": "array",
+      "required": true,
+      "description": "Array of transaction records for the account statement",
+      "item_schema": {
+        "type": "object",
+        "fields": {
+          "Date": {
+            "type": "date",
+            "format": "MM/DD/YYYY",
+            "required": true,
+            "description": "Transaction date"
+          },
+          "Transaction type": {
+            "type": "text",
+            "required": true,
+            "allowed_values": [
+              "Opening balance",
+              "Opening balances",
+              "Closing balance",
+              "FOREX SALE",
+              "Forex Sale",
+              "FOREX PURCHASE",
+              "RECEIVE VERSUS PAYMENT",
+              "RECIVE VERUS PAYMENT",
+              "RCEIVE VERUS PAYMENT",
+              "LOAN DRAWDOWN",
+              "INTEREST",
+              "INTEREST CALCULATION BALANCE",
+              "REPAYMENT",
+              "PREMIUM CURRENCY OPTION",
+              "STRUCTURED PRODUCTS",
+              "CALL DEPOSIT NEW INVESTMENT",
+              "CALL DEPOSIT INCREASE",
+              "CALL DEPOSIT DECREASE",
+              "CALL DEPOSIT REPAYMENT",
+              "ASSIGNMENTS",
+              "DIVIDEND",
+              "CANCELLATION FOREX PURCH",
+              "CANCELLATION FOREX SALE",
+              "COMMISSION UBS SEC. LEND.",
+              "SPECIAL PAYMENT ORDER",
+              "FIXED TERM DEPOSIT INTEREST PAYMENT",
+              "FIXED TERM DEPOSIT REPAYMENT",
+              "FIXED TERM DEPOSIT NEW INVESTMENT",
+              "CREDIT INSTRUCTIONS",
+              "UBS ADVICE",
+              "MUTUAL FUNDS",
+              "CUSTODY PRICE",
+              "ORDER",
+              "BALANCE CLOSING OF SERVICE PRICES"
+            ],
+            "description": "Type of bank transaction - keywords determine the transaction type"
+          },
+          "Reference": {
+            "type": "text",
+            "required": false,
+            "nullable": true,
+            "description": "Transaction reference number or description, can be multi-line"
+          },
+          "Amounts": {
+            "type": "number",
+            "subtype": "float",
+            "required": true,
+            "description": "Transaction amount - Debit (negative), Credit (positive). Combined from Debits and Credits columns."
+          },
+          "Value date": {
+            "type": "date",
+            "format": "MM/DD/YYYY",
+            "required": true,
+            "description": "Value date for the transaction"
+          },
+          "Balances": {
+            "type": "number",
+            "subtype": "float",
+            "required": true,
+            "description": "Account balance after transaction"
+          }
+        }
+      }
+    }
+  },
+  "notes": {
+    "data_extraction": "Extract all table information from bank statements",
+    "transaction_type_detection": "Identify transaction type based on keywords in the Information column",
+    "amount_handling": "Combine Debits (negative) and Credits (positive) into single Amounts column",
+    "date_format": "Dates should be in MM/DD/YYYY format",
+    "reference_field": "May contain multi-line text from Information column"
+  }
+}

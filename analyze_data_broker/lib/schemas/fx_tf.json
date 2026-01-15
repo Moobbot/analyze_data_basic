@@ -1,0 +1,78 @@
+{
+  "schema_name": "FX & TF (I.3)",
+  "description": "Schema for Foreign Exchange and Transfer Forward transactions",
+  "fields": {
+    "Client name": {
+      "type": "text",
+      "required": true,
+      "description": "Name of the client"
+    },
+    "Transaction type": {
+      "type": "text",
+      "required": true,
+      "description": "Type of FX/TF transaction"
+    },
+    "Trade date": {
+      "type": "date",
+      "format": "MM/DD/YYYY",
+      "required": true,
+      "description": "Date when the FX trade was executed"
+    },
+    "Settlement date": {
+      "type": "date",
+      "format": "MM/DD/YYYY",
+      "required": false,
+      "nullable": true,
+      "description": "Date when the FX trade settles"
+    },
+    "Rate": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Exchange rate applied"
+    },
+    "Currency Buy": {
+      "type": "text",
+      "required": true,
+      "validation": {
+        "pattern": "^[A-Z]{3}$"
+      },
+      "description": "Currency code being purchased"
+    },
+    "Amount Buy": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Amount in the currency being purchased"
+    },
+    "Currency Sell": {
+      "type": "text",
+      "required": true,
+      "validation": {
+        "pattern": "^[A-Z]{3}$"
+      },
+      "description": "Currency code being sold"
+    },
+    "Amount Sell": {
+      "type": "number",
+      "subtype": "float",
+      "required": false,
+      "nullable": true,
+      "description": "Amount in the currency being sold"
+    },
+    "Account no. Buy": {
+      "type": "text",
+      "required": false,
+      "nullable": true,
+      "description": "Account number for the buy side"
+    },
+    "Account no. Sell": {
+      "type": "text",
+      "required": false,
+      "nullable": true,
+      "description": "Account number for the sell side"
+    }
+  }
+}

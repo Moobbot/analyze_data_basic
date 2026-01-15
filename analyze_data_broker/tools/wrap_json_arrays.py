@@ -4,10 +4,12 @@ import json
 folders = [
     "datasets/labels/Account_Statements",
     "datasets/labels/Contact_Note",
-    "datasets/labels/Contact_Note_backup",
     "datasets/labels/Dividend",
     "datasets/labels/FX-FT",
     "datasets/labels/Others_Template",
+    "datasets/labels/Others_Template/Interest_Payment",
+    "datasets/labels/Others_Template/Credit_Advice",
+    "datasets/labels/Others_Template/Deposit",
 ]
 
 for folder in folders:
