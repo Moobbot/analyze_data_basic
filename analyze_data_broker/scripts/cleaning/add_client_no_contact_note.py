@@ -1,3 +1,27 @@
+"""
+Account Number Extraction and Update Script
+
+This script extracts account numbers from Contact Note text files using two different patterns:
+1. Header extraction: Looks for "Account no." label in the header section
+2. Body extraction: Searches for "of account" pattern followed by account number
+
+The extracted values are then used to update corresponding JSON label files:
+- Header extraction → updates 'account_0' field
+- Body extraction → updates 'Account no.' field
+
+Usage:
+    python add_client_no_contact_note.py [--file FILENAME]
+
+Arguments:
+    --file: Optional. Specific file to process (filename only, e.g., 0816.txt)
+            If not provided, processes all .txt files in the directory.
+
+Special Features:
+- Handles multi-line account numbers (e.g., split across lines)
+- Removes common currency codes from extracted values
+- Supports both single-file and batch processing modes
+"""
+
 import os
 import json
 import re
@@ -11,7 +35,7 @@ LABEL_DIR = r"d:\Work\Clients\AIRC\product\ACPA\analyze_data_basic\analyze_data_
 def extract_account_no_from_header(text_file_path):
     """Extracts Account no. (original logic) from the text file."""
     try:
-        with open(text_file_path, 'r', encoding='utf-8') as f:
+        with open(text_file_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
 
         for i, line in enumerate(lines):
@@ -22,7 +46,7 @@ def extract_account_no_from_header(text_file_path):
                 # But previously "Client no." mapped to account_0.
                 # Let's preserve the logic that finds the line AFTER the label.
                 if i + 1 < len(lines):
-                    return lines[i+1].strip()
+                    return lines[i + 1].strip()
     except Exception as e:
         print(f"Error reading {text_file_path}: {e}")
     return None
@@ -33,7 +57,7 @@ def extract_account_no_from_body(text_file_path):
     try:
         if not os.path.exists(text_file_path):
             return None
-        with open(text_file_path, 'r', encoding='utf-8') as f:
+        with open(text_file_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
 
         for line in lines:
@@ -43,7 +67,11 @@ def extract_account_no_from_body(text_file_path):
                     raw_val = match.group(1).strip()
                     # Remove common currencies
                     raw_val = re.sub(
-                        r"\s+(USD|SGD|HKD|EUR|GBP|AUD|JPY|CAD|CHF|CNY)$", "", raw_val, flags=re.IGNORECASE)
+                        r"\s+(USD|SGD|HKD|EUR|GBP|AUD|JPY|CAD|CHF|CNY)$",
+                        "",
+                        raw_val,
+                        flags=re.IGNORECASE,
+                    )
                     clean_val = raw_val.replace(" ", "")
                     return clean_val
     except Exception as e:
@@ -58,26 +86,26 @@ def update_label_file(json_file_path, account_0_val=None, account_no_val=None):
             print(f"Label file not found: {json_file_path}")
             return False
 
-        with open(json_file_path, 'r', encoding='utf-8') as f:
+        with open(json_file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         updated = False
         if isinstance(data, list):
             for item in data:
                 if account_0_val:
-                    item['account_0'] = account_0_val
+                    item["account_0"] = account_0_val
                     updated = True
 
                 if account_no_val:
-                    if item.get('Account no.') != account_no_val:
-                        item['Account no.'] = account_no_val
+                    if item.get("Account no.") != account_no_val:
+                        item["Account no."] = account_no_val
                         updated = True
         else:
             print(f"Unexpected JSON format in {json_file_path}")
             return False
 
         if updated:
-            with open(json_file_path, 'w', encoding='utf-8') as f:
+            with open(json_file_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=4, ensure_ascii=False)
             return True
     except Exception as e:
@@ -90,14 +118,13 @@ def main(target_file=None):
     if target_file:
         files_to_process.append(target_file)
     else:
-        files_to_process = [f for f in os.listdir(
-            TEXT_DIR) if f.endswith('.txt')]
+        files_to_process = [f for f in os.listdir(TEXT_DIR) if f.endswith(".txt")]
 
     count_updated = 0
 
     for filename in files_to_process:
         text_path = os.path.join(TEXT_DIR, filename)
-        json_filename = filename.replace('.txt', '.json')
+        json_filename = filename.replace(".txt", ".json")
         json_path = os.path.join(LABEL_DIR, json_filename)
 
         # 1. Formatting extraction (often matches Client no / Account no in header) -> account_0
@@ -109,7 +136,11 @@ def main(target_file=None):
         val_for_account_no = extract_account_no_from_body(text_path)
 
         if val_for_account_0 or val_for_account_no:
-            if update_label_file(json_path, account_0_val=val_for_account_0, account_no_val=val_for_account_no):
+            if update_label_file(
+                json_path,
+                account_0_val=val_for_account_0,
+                account_no_val=val_for_account_no,
+            ):
                 print(f"Updated {json_filename}")
                 count_updated += 1
             else:
@@ -127,9 +158,11 @@ def main(target_file=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Extract and update account info in labels")
+        description="Extract and update account info in labels"
+    )
     parser.add_argument(
-        "--file", help="Specific file to process (filename only, e.g. 0816.txt)")
+        "--file", help="Specific file to process (filename only, e.g. 0816.txt)"
+    )
     args = parser.parse_args()
 
     main(args.file)

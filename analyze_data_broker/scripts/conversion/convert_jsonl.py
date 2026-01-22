@@ -5,17 +5,17 @@ import uuid
 # --- CẤU HÌNH ĐƯỜNG DẪN (Bạn chỉnh sửa phần này) ---
 
 # 1. Đường dẫn folder gốc chứa các folder con (Credit Note, Invoice...)
-INPUT_ROOT_FOLDER = "datasets/labels/Trade_Confirmation"
-# INPUT_ROOT_FOLDER = "datasets/labels/Contact_Note"
+# INPUT_ROOT_FOLDER = "datasets/labels/Trade_Confirmation"
+INPUT_ROOT_FOLDER = "datasets/labels/Contact_Note"
 
 # 2. Tên file kết quả đầu ra
-OUTPUT_FILE = "datasets/acpa_broker_trade_sft_dataset_generated.jsonl"
-# OUTPUT_FILE = "datasets/acpa_broker_contact_sft_dataset_generated.jsonl"
+# OUTPUT_FILE = "datasets/acpa_broker_trade_sft_dataset_generated.jsonl"
+OUTPUT_FILE = "datasets/acpa_broker_contact_sft_dataset_generated.jsonl"
 
 # 3. Đường dẫn giả định cho ảnh trong server training (Prefix)
 # Code sẽ ghép: IMAGE_PREFIX + Tên_File.png
-IMAGE_PREFIX = "playground/broker/acpa_broker_trade_pdf_images/"
-# IMAGE_PREFIX = "playground/broker/acpa_broker_contact_pdf_images/"
+# IMAGE_PREFIX = "playground/broker/acpa_broker_trade_pdf_images/"
+IMAGE_PREFIX = "playground/broker/acpa_broker_contact_pdf_images/"
 
 # 4. Đuôi file ảnh bạn muốn gán (png, jpg, jpeg...)
 IMAGE_EXTENSION = ".png"

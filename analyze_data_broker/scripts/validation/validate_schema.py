@@ -10,8 +10,10 @@ import csv
 import argparse
 from pathlib import Path
 
-# Add parent directory to path
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Add parent directory to path (2 levels up from scripts/validation/)
+parent_dir = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 sys.path.insert(0, parent_dir)
 
 from lib import schema_validator

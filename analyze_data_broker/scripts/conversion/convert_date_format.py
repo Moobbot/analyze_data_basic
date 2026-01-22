@@ -11,17 +11,18 @@ import sys
 # convert_date_format.py is at analyze_data_broker\scripts
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-# Should go up two levels from verify/scripts to get to analyze_data_basic root
+# Should go up three levels from scripts/conversion to get to analyze_data_basic root
 # Layout:
 # analyze_data_basic/
 #   analyze_data_broker/
 #     scripts/
-#       convert_date_format.py
+#       conversion/
+#         convert_date_format.py
 #   common_lib/
 #     date_utils.py
 
-# Go up from scripts -> analyze_data_broker -> analyze_data_basic
-root_dir = os.path.abspath(os.path.join(current_dir, "../../"))
+# Go up from scripts/conversion -> scripts -> analyze_data_broker -> analyze_data_basic
+root_dir = os.path.abspath(os.path.join(current_dir, "../../../"))
 
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)

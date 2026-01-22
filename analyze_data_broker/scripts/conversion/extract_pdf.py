@@ -3,7 +3,10 @@ import sys
 import shutil
 
 # Ensure both broker root (for lib) and project root (for common_lib) are on sys.path
-BROKER_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Now 2 levels up from scripts/conversion/ to get to analyze_data_broker
+BROKER_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 PROJECT_ROOT = os.path.dirname(BROKER_ROOT)
 if BROKER_ROOT not in sys.path:
     sys.path.insert(0, BROKER_ROOT)

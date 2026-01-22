@@ -8,7 +8,8 @@ import json
 import argparse
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+# Add parent directory to path (2 levels up from scripts/cleaning/)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from lib.validation_config import TRANSACTION_KEYWORDS
 
 

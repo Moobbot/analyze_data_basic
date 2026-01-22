@@ -3,8 +3,10 @@ import re
 import json
 import sys
 
-# Add parent directory to path to allow importing config
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add parent directory to path to allow importing config (2 levels up from scripts/cleaning/)
+sys.path.append(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 import config
 
 # Define paths (using config if possible, but hardcoding for specificity based on user prompt context)
