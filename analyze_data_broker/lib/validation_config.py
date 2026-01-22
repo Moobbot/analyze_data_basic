@@ -41,12 +41,15 @@ TRANSACTION_KEYWORDS = {
         "Maturity",
     ],
     "PREPAYMENT FOR FUND SUBSCRIPTION": [
+        "Prepayment for Fund Subscription",
         "Prepayment for fund subscription",
     ],
     "PREPAYMENT FOR FUND SUBSCRIPTION CORRECTION": [
+        "Prepayment for Fund Subscription Correction",
         "Prepayment for fund subscription Correction",
     ],
     "PREPAYMENT FOR FUND SUBSCRIPTION CANCELLATION": [
+        "Prepayment for Fund Subscription Cancellation",
         "Prepayment for fund subscription Cancellation",
     ],
 }
