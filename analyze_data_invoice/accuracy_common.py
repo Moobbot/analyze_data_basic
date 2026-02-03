@@ -377,6 +377,9 @@ def create_excel_report(wb, gt_df, model_df, results, matched_invoices):
     fuzzy_match_fill = PatternFill(
         start_color="FFE6CC", end_color="FFE6CC", fill_type="solid"
     )  # Light orange for fuzzy match
+    over_extraction_fill = PatternFill(
+        start_color="FFD9B3", end_color="FFD9B3", fill_type="solid"
+    )  # Orange for over-extraction rows
 
     # Sheet 1: Accuracy Summary
     ws_summary = wb.create_sheet("Accuracy Summary")
@@ -431,9 +434,160 @@ def create_excel_report(wb, gt_df, model_df, results, matched_invoices):
     ws_summary.cell(summary_row, 7, f"{overall_recall:.2f}")
     ws_summary.cell(summary_row, 8, f"{overall_f1:.2f}")
 
+    # Add note about over-extraction
+    note_row = summary_row + 2
+    ws_summary.cell(note_row, 1, "NOTE:").font = Font(bold=True, italic=True)
+    ws_summary.cell(
+        note_row + 1,
+        1,
+        "Over-extraction rows (Model has more rows than GT for same invoice)",
+    )
+    ws_summary.cell(
+        note_row + 2, 1, "are highlighted in ORANGE in Field Comparison sheet."
+    )
+    ws_summary.cell(note_row + 3, 1, "These rows are INCLUDED in the above metrics.")
+
     ws_summary.column_dimensions["A"].width = 25
     for col in ["B", "C", "D", "E", "F", "G", "H"]:
         ws_summary.column_dimensions[col].width = 15
+
+    # Sheet 1.5: Accuracy Summary (Excluding Over-Extraction)
+    ws_summary_clean = wb.create_sheet("Accuracy (Excl Over-Extraction)")
+
+    # Same headers
+    for col, header in enumerate(headers, start=1):
+        cell = ws_summary_clean.cell(1, col, header)
+        cell.fill = header_fill
+        cell.font = header_font
+
+    # Recalculate metrics excluding over-extraction
+    clean_results = []
+    for result in results:
+        field = result["field"]
+
+        # Recalculate for this field excluding over-extraction
+        gt_matched = gt_df[gt_df["invoice_name_normalized"].isin(matched_invoices)]
+        model_matched = model_df[
+            model_df["invoice_name_normalized"].isin(matched_invoices)
+        ]
+
+        total_gt_clean = 0
+        total_model_clean = 0  # Only count rows that have GT counterpart
+        correct_clean = 0
+
+        for invoice_name in matched_invoices:
+            gt_rows = gt_matched[gt_matched["invoice_name_normalized"] == invoice_name]
+            model_rows = model_matched[
+                model_matched["invoice_name_normalized"] == invoice_name
+            ]
+
+            # Only count up to GT length (exclude over-extraction)
+            num_rows = min(len(gt_rows), len(model_rows))
+            total_gt_clean += len(gt_rows)
+            total_model_clean += num_rows  # This is the key difference
+
+            for i in range(num_rows):
+                gt_val = gt_rows.iloc[i].get(field)
+                model_val = model_rows.iloc[i].get(field)
+
+                is_match, _ = are_values_equivalent(gt_val, model_val, field)
+                if is_match:
+                    correct_clean += 1
+
+        # Calculate clean metrics
+        acc_clean = (correct_clean / total_gt_clean * 100) if total_gt_clean > 0 else 0
+        prec_clean = (
+            (correct_clean / total_model_clean * 100) if total_model_clean > 0 else 0
+        )
+        rec_clean = (correct_clean / total_gt_clean * 100) if total_gt_clean > 0 else 0
+        f1_clean = (
+            (2 * prec_clean * rec_clean / (prec_clean + rec_clean))
+            if (prec_clean + rec_clean) > 0
+            else 0
+        )
+
+        clean_results.append(
+            {
+                "field": field,
+                "total_gt": total_gt_clean,
+                "total_model": total_model_clean,
+                "correct": correct_clean,
+                "accuracy": acc_clean,
+                "precision": prec_clean,
+                "recall": rec_clean,
+                "f1_score": f1_clean,
+            }
+        )
+
+    # Write clean results
+    for row_idx, result in enumerate(clean_results, start=2):
+        ws_summary_clean.cell(row_idx, 1, result["field"])
+        ws_summary_clean.cell(row_idx, 2, result["total_gt"])
+        ws_summary_clean.cell(row_idx, 3, result["total_model"])
+        ws_summary_clean.cell(row_idx, 4, result["correct"])
+        ws_summary_clean.cell(row_idx, 5, f"{result['accuracy']:.2f}")
+        ws_summary_clean.cell(row_idx, 6, f"{result['precision']:.2f}")
+        ws_summary_clean.cell(row_idx, 7, f"{result['recall']:.2f}")
+        ws_summary_clean.cell(row_idx, 8, f"{result['f1_score']:.2f}")
+
+    # Overall Summary for clean metrics
+    summary_row_clean = len(clean_results) + 3
+    ws_summary_clean.cell(summary_row_clean, 1, "OVERALL SUMMARY").font = Font(
+        bold=True
+    )
+
+    total_gt_clean = sum(r["total_gt"] for r in clean_results)
+    total_model_clean = sum(r["total_model"] for r in clean_results)
+    total_correct_clean = sum(r["correct"] for r in clean_results)
+
+    overall_accuracy_clean = (
+        (total_correct_clean / total_gt_clean * 100) if total_gt_clean > 0 else 0
+    )
+    overall_precision_clean = (
+        (total_correct_clean / total_model_clean * 100) if total_model_clean > 0 else 0
+    )
+    overall_recall_clean = (
+        (total_correct_clean / total_gt_clean * 100) if total_gt_clean > 0 else 0
+    )
+    overall_f1_clean = (
+        (
+            2
+            * overall_precision_clean
+            * overall_recall_clean
+            / (overall_precision_clean + overall_recall_clean)
+        )
+        if (overall_precision_clean + overall_recall_clean) > 0
+        else 0
+    )
+
+    ws_summary_clean.cell(summary_row_clean, 2, total_gt_clean)
+    ws_summary_clean.cell(summary_row_clean, 3, total_model_clean)
+    ws_summary_clean.cell(summary_row_clean, 4, total_correct_clean)
+    ws_summary_clean.cell(summary_row_clean, 5, f"{overall_accuracy_clean:.2f}")
+    ws_summary_clean.cell(summary_row_clean, 6, f"{overall_precision_clean:.2f}")
+    ws_summary_clean.cell(summary_row_clean, 7, f"{overall_recall_clean:.2f}")
+    ws_summary_clean.cell(summary_row_clean, 8, f"{overall_f1_clean:.2f}")
+
+    # Add explanation note
+    note_row_clean = summary_row_clean + 2
+    ws_summary_clean.cell(note_row_clean, 1, "NOTE:").font = Font(
+        bold=True, italic=True
+    )
+    ws_summary_clean.cell(
+        note_row_clean + 1,
+        1,
+        "This sheet EXCLUDES over-extraction rows from Total Model count.",
+    )
+    ws_summary_clean.cell(
+        note_row_clean + 2, 1, "Only rows that have GT counterpart are counted."
+    )
+    ws_summary_clean.cell(
+        note_row_clean + 3, 1, "This provides cleaner Precision metrics."
+    )
+
+    ws_summary_clean.column_dimensions["A"].width = 25
+    for col in ["B", "C", "D", "E", "F", "G", "H"]:
+        ws_summary_clean.column_dimensions[col].width = 15
 
     # Sheet 2: Type Analysis (New)
     if "invoice_type" in gt_df.columns:
@@ -565,6 +719,9 @@ def create_excel_report(wb, gt_df, model_df, results, matched_invoices):
             gt_row_data = gt_rows.iloc[i].to_dict() if i < len(gt_rows) else {}
             model_row_data = model_rows.iloc[i].to_dict() if i < len(model_rows) else {}
 
+            # Check if this is an over-extraction row (model has row but GT doesn't)
+            is_over_extraction = (i >= len(gt_rows)) and (i < len(model_rows))
+
             calculated_gt = calculate_missing_fields(gt_row_data) if gt_row_data else {}
 
             for field in EVAL_FIELDS:
@@ -612,6 +769,12 @@ def create_excel_report(wb, gt_df, model_df, results, matched_invoices):
                     match_cell.fill = mismatch_fill  # Red
 
                 col += 3
+
+            # Highlight entire row if over-extraction
+            if is_over_extraction:
+                for col_idx in range(1, col):
+                    ws_compare.cell(row, col_idx).fill = over_extraction_fill
+
             row += 1
 
     # Adjust widths
