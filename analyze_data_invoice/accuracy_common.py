@@ -84,6 +84,10 @@ def are_values_equivalent(val1, val2):
     is_zero2 = str2 == "" or str2.replace(".", "").replace(",", "") == "0"
 
     if is_zero1 and is_zero2:
+        # Check if one is actually empty and the other is 0
+        if (str1 == "" and str2 != "") or (str1 != "" and str2 == ""):
+            return True, "zero_equivalent"
+        # Both are 0 but different format
         return True, "numeric"
 
     if str1 == "" or str2 == "":
@@ -264,6 +268,9 @@ def create_excel_report(wb, gt_df, model_df, results, matched_invoices):
     numeric_match_fill = PatternFill(
         start_color="E2EFDA", end_color="E2EFDA", fill_type="solid"
     )
+    zero_match_fill = PatternFill(
+        start_color="D9E1F2", end_color="D9E1F2", fill_type="solid"
+    )  # Light blue for zero-equivalent
 
     # Sheet 1: Accuracy Summary
     ws_summary = wb.create_sheet("Accuracy Summary")
@@ -483,12 +490,17 @@ def create_excel_report(wb, gt_df, model_df, results, matched_invoices):
                 match_cell = ws_compare.cell(row, col + 2, "✓" if is_match else "✗")
 
                 if is_match:
-                    if match_type == "numeric":
-                        match_cell.fill = numeric_match_fill
+                    if match_type == "zero_equivalent":
+                        # Empty vs 0 equivalence
+                        match_cell.fill = zero_match_fill  # Light blue
+                    elif match_type == "numeric":
+                        # Numeric match but different format
+                        match_cell.fill = numeric_match_fill  # Light green
                     else:
-                        match_cell.fill = match_fill
+                        # Exact match
+                        match_cell.fill = match_fill  # Green
                 else:
-                    match_cell.fill = mismatch_fill
+                    match_cell.fill = mismatch_fill  # Red
 
                 col += 3
             row += 1

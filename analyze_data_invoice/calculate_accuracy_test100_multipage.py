@@ -23,6 +23,22 @@ MODEL_OUTPUT_CSV = TEST_DIR / "test-set-100-multipage-all.csv"
 OUTPUT_FILE = BASE_DIR / "accuracy_report_test-set-100-multipage.xlsx"
 
 
+LABELS_DIR = BASE_DIR / "datasets" / "test-set-100-multipage" / "labels"
+
+
+def get_invoice_type_map():
+    """Scan labels directory to map invoice name to type"""
+    type_map = {}
+    if not LABELS_DIR.exists():
+        return type_map
+
+    for json_file in LABELS_DIR.glob("**/*.json"):
+        # Map file stem (without extension) to folder name
+        type_map[json_file.stem] = json_file.parent.name
+
+    return type_map
+
+
 def load_ground_truth():
     """Load ground truth CSV"""
     if not GROUND_TRUTH_CSV.exists():
@@ -31,6 +47,12 @@ def load_ground_truth():
 
     df = pd.read_csv(GROUND_TRUTH_CSV, encoding="utf-8")
     df["invoice_name_normalized"] = df["invoice_name"].apply(normalize_invoice_name)
+
+    # Add invoice type
+    type_map = get_invoice_type_map()
+    # Apply map based on normalized name (which should match json stem)
+    df["invoice_type"] = df["invoice_name_normalized"].map(type_map)
+
     return df
 
 

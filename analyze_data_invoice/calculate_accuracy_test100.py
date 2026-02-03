@@ -32,6 +32,9 @@ def load_ground_truth():
 
     for json_file in json_files:
         try:
+            # Extract invoice type from parent folder name
+            invoice_type = json_file.parent.name
+
             with open(json_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
@@ -41,11 +44,13 @@ def load_ground_truth():
                     if not isinstance(invoice_data, dict):
                         continue
                     invoice_name = f"{json_file.stem}[{idx}]"
-                    rows.extend(process_invoice(invoice_name, invoice_data))
+                    rows.extend(
+                        process_invoice(invoice_name, invoice_data, invoice_type)
+                    )
             # Handle object format
             elif isinstance(data, dict):
                 invoice_name = json_file.stem
-                rows.extend(process_invoice(invoice_name, invoice_data))
+                rows.extend(process_invoice(invoice_name, invoice_data, invoice_type))
 
         except Exception as e:
             print(f"  Error processing {json_file.name}: {e}")
@@ -55,7 +60,7 @@ def load_ground_truth():
     return df
 
 
-def process_invoice(invoice_name, data):
+def process_invoice(invoice_name, data, invoice_type):
     """Process single invoice data"""
     rows = []
 
@@ -71,6 +76,7 @@ def process_invoice(invoice_name, data):
 
         row = {
             "invoice_name": invoice_name + ".pdf",
+            "invoice_type": invoice_type,
             "Type": data.get("Type"),
             "No": data.get("No"),
             "Date": data.get("Date"),
