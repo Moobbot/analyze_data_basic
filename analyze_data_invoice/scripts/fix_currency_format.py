@@ -54,24 +54,34 @@ def fix_json_file(file_path):
 
         fixed_count = 0
 
-        # Sửa Description array
-        if not isinstance(data, dict) or "Description" not in data:
+        # Determine items to process
+        items_to_process = []
+        if isinstance(data, list):
+            items_to_process = data
+        elif isinstance(data, dict):
+            items_to_process = [data]
+        else:
             return {"file": str(file_path.name), "fixed": 0, "status": "no_change"}
 
-        descriptions = data["Description"]
-        if not isinstance(descriptions, list):
-            return {"file": str(file_path.name), "fixed": 0, "status": "no_change"}
-
-        for item in descriptions:
-            if not isinstance(item, dict):
+        for doc in items_to_process:
+            # Sửa Description array
+            if not isinstance(doc, dict) or "Description" not in doc:
                 continue
-            for field in CURRENCY_FIELDS:
-                if field not in item:
+
+            descriptions = doc["Description"]
+            if not isinstance(descriptions, list):
+                continue
+
+            for item in descriptions:
+                if not isinstance(item, dict):
                     continue
-                original = item[field]
-                item[field] = fix_amount_value(item[field])
-                if original != item[field]:
-                    fixed_count += 1
+                for field in CURRENCY_FIELDS:
+                    if field not in item:
+                        continue
+                    original = item[field]
+                    item[field] = fix_amount_value(item[field])
+                    if original != item[field]:
+                        fixed_count += 1
 
         # Lưu file nếu có thay đổi
         if fixed_count > 0:
