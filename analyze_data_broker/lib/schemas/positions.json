@@ -33,7 +33,7 @@
       "nullable": true,
       "description": "Quantity of securities or cash amount"
     },
-    " Security ID": {
+    "Security ID": {
       "type": "text",
       "required": false,
       "nullable": true,

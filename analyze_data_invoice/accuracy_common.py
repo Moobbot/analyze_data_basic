@@ -64,7 +64,60 @@ def normalize_value(value):
         return value_str.lower()
 
 
-def are_values_equivalent(val1, val2):
+def normalize_company_name(name):
+    """Normalize company name for fuzzy matching"""
+    if pd.isna(name) or str(name).strip() == "":
+        return ""
+
+    name = str(name).strip().lower()
+
+    # Remove parenthetical suffixes (e.g., "(SGD)", "(USD)", "(Sponsor of...)")
+    # This allows "Abadi Investments Pte Ltd" to match "Abadi Investments Pte Ltd (SGD)"
+    name = re.sub(r"\s*\([^)]*\)\s*$", "", name).strip()
+
+    # Common abbreviations mapping
+    replacements = {
+        r"\bltd\.?\b": "limited",
+        r"\bpte\.?\b": "private",
+        r"\bco\.?\b": "company",
+        r"\bcorp\.?\b": "corporation",
+        r"\binc\.?\b": "incorporated",
+        r"\bllc\.?\b": "limited liability company",
+        r"\bllp\.?\b": "limited liability partnership",
+        r"\bs\.?a\.?\b": "sociedad anonima",
+        r"\bspc\.?\b": "segregated portfolio company",
+    }
+
+    for pattern, replacement in replacements.items():
+        name = re.sub(pattern, replacement, name)
+
+    # Remove extra spaces
+    name = re.sub(r"\s+", " ", name).strip()
+
+    return name
+
+
+def normalize_tax_type(tax_str):
+    """Normalize tax type to extract percentage"""
+    if pd.isna(tax_str) or str(tax_str).strip() == "":
+        return ""
+
+    tax_str = str(tax_str).strip().lower()
+
+    # Extract percentage
+    match = re.search(r"(\d+(?:\.\d+)?)\s*%", tax_str)
+    if match:
+        return f"{match.group(1)}%"
+
+    # Common tax keywords
+    if "exempt" in tax_str or "zero" in tax_str or "nil" in tax_str:
+        return "0%"
+
+    # Return normalized string if no percentage found
+    return tax_str
+
+
+def are_values_equivalent(val1, val2, field_name=None):
     """Check if two values are equivalent (handles numeric and string comparison)
     Returns: (is_match, match_type)
     - match_type: 'exact', 'numeric', 'mismatch'
@@ -80,18 +133,54 @@ def are_values_equivalent(val1, val2):
         return True, "exact"
 
     # Special case: Treat "" as "0" or "0.0"
-    is_zero1 = str1 == "" or str1.replace(".", "").replace(",", "") == "0"
-    is_zero2 = str2 == "" or str2.replace(".", "").replace(",", "") == "0"
+    # Check if value is zero in any format
+    def is_zero_value(s):
+        if s == "":
+            return True
+        # Try to convert to float and check if it's zero
+        try:
+            num = float(s.replace(",", ""))  # Remove thousand separators
+            return num == 0.0 or num == -0.0
+        except (ValueError, TypeError):
+            # If can't convert to number, check string patterns
+            cleaned = (
+                s.replace(".", "").replace(",", "").replace(" ", "").replace("-", "")
+            )
+            return cleaned == "" or cleaned == "0"
+
+    is_zero1 = is_zero_value(str1)
+    is_zero2 = is_zero_value(str2)
 
     if is_zero1 and is_zero2:
-        # Check if one is actually empty and the other is 0
+        # Check if one is actually empty and the other is explicitly 0
         if (str1 == "" and str2 != "") or (str1 != "" and str2 == ""):
             return True, "zero_equivalent"
-        # Both are 0 but different format
-        return True, "numeric"
+        # Both are 0 but different format (e.g., "0" vs "0.0")
+        if str1 != str2:
+            return True, "zero_equivalent"
+        return True, "exact"
 
     if str1 == "" or str2 == "":
         return False, "mismatch"
+
+    # Apply field-specific fuzzy matching
+    if field_name in ["Customer", "Supplier"]:
+        norm1 = normalize_company_name(val1)
+        norm2 = normalize_company_name(val2)
+        if norm1 == norm2:
+            # Check if original strings were different
+            if str1.lower() != str2.lower():
+                return True, "fuzzy"
+            return True, "exact"
+
+    if field_name == "Tax type":
+        norm1 = normalize_tax_type(val1)
+        norm2 = normalize_tax_type(val2)
+        if norm1 == norm2:
+            # Check if original strings were different
+            if str1.lower() != str2.lower():
+                return True, "fuzzy"
+            return True, "exact"
 
     # Normalize both values
     norm1 = normalize_value(val1)
@@ -218,7 +307,7 @@ def calculate_field_accuracy(gt_df, model_df, field):
             gt_val = gt_rows.iloc[i].get(field)
             model_val = model_rows.iloc[i].get(field)
 
-            is_match, _ = are_values_equivalent(gt_val, model_val)
+            is_match, _ = are_values_equivalent(gt_val, model_val, field)
             if is_match:
                 correct += 1
 
@@ -271,6 +360,9 @@ def create_excel_report(wb, gt_df, model_df, results, matched_invoices):
     zero_match_fill = PatternFill(
         start_color="D9E1F2", end_color="D9E1F2", fill_type="solid"
     )  # Light blue for zero-equivalent
+    fuzzy_match_fill = PatternFill(
+        start_color="FFE6CC", end_color="FFE6CC", fill_type="solid"
+    )  # Light orange for fuzzy match
 
     # Sheet 1: Accuracy Summary
     ws_summary = wb.create_sheet("Accuracy Summary")
@@ -486,11 +578,14 @@ def create_excel_report(wb, gt_df, model_df, results, matched_invoices):
 
                 ws_compare.cell(row, col + 1, model_str)
 
-                is_match, match_type = are_values_equivalent(gt_val, model_val)
+                is_match, match_type = are_values_equivalent(gt_val, model_val, field)
                 match_cell = ws_compare.cell(row, col + 2, "✓" if is_match else "✗")
 
                 if is_match:
-                    if match_type == "zero_equivalent":
+                    if match_type == "fuzzy":
+                        # Fuzzy match (company name abbreviations, tax format)
+                        match_cell.fill = fuzzy_match_fill  # Light orange
+                    elif match_type == "zero_equivalent":
                         # Empty vs 0 equivalence
                         match_cell.fill = zero_match_fill  # Light blue
                     elif match_type == "numeric":

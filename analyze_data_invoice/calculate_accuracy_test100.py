@@ -132,11 +132,29 @@ def main():
     gt_invoices = set(gt_df["invoice_name_normalized"].unique())
     model_invoices = set(model_df["invoice_name_normalized"].unique())
     matched_invoices = gt_invoices & model_invoices
+    missing_in_model = gt_invoices - model_invoices
+    extra_in_model = model_invoices - gt_invoices
 
     print(f"\n  Unique GT invoices: {len(gt_invoices)}")
     print(f"  Unique Model invoices: {len(model_invoices)}")
     print(f"  Matched invoices: {len(matched_invoices)}")
-    print(f"  Missing in Model: {len(gt_invoices - model_invoices)}")
+    print(f"  Missing in Model: {len(missing_in_model)}")
+    if missing_in_model:
+        print(
+            f"    → GT has but Model doesn't: {sorted(list(missing_in_model))[:5]}..."
+            if len(missing_in_model) > 5
+            else f"    → {sorted(list(missing_in_model))}"
+        )
+    print(f"  Extra in Model: {len(extra_in_model)}")
+    if extra_in_model:
+        print(
+            f"    ⚠️  Model has but GT doesn't: {sorted(list(extra_in_model))[:5]}..."
+            if len(extra_in_model) > 5
+            else f"    ⚠️  {sorted(list(extra_in_model))}"
+        )
+        print(
+            f"    ⚠️  WARNING: These invoices will be IGNORED in accuracy calculation!"
+        )
 
     # Calculate accuracy for each field
     print("\n[2/4] Calculating accuracy metrics...")
