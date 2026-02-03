@@ -75,6 +75,20 @@ def normalize_company_name(name):
     # This allows "Abadi Investments Pte Ltd" to match "Abadi Investments Pte Ltd (SGD)"
     name = re.sub(r"\s*\([^)]*\)\s*$", "", name).strip()
 
+    # Normalize Unicode dashes to standard hyphen
+    # This handles: en dash (–), em dash (—), minus sign (−), etc.
+    # Allows "Fund – Name" to match "Fund - Name"
+    name = name.replace("–", "-")  # en dash (U+2013)
+    name = name.replace("—", "-")  # em dash (U+2014)
+    name = name.replace("−", "-")  # minus sign (U+2212)
+    name = name.replace("‐", "-")  # hyphen (U+2010)
+
+    # Normalize separator spacing: "VCC-JLI" vs "VCC - JLI"
+    # Replace separators with/without spaces to consistent format (space-separator-space)
+    name = re.sub(r"\s*-\s*", " - ", name)  # Dash
+    name = re.sub(r"\s*/\s*", " / ", name)  # Slash
+    name = re.sub(r"\s*&\s*", " & ", name)  # Ampersand
+
     # Common abbreviations mapping
     replacements = {
         r"\bltd\.?\b": "limited",
