@@ -16,7 +16,7 @@ from common_lib.wrap_json_arrays import wrap_json_in_folders
 BASE_DIR = Path(__file__).parent
 DATASETS = [
     BASE_DIR / "datasets" / "test-set-100" / "labels",
-    BASE_DIR / "datasets" / "test-set-100-muti-page" / "labels",
+    BASE_DIR / "datasets" / "test-set-100-multipage" / "labels",
 ]
 
 
