@@ -434,18 +434,72 @@ def create_excel_report(wb, gt_df, model_df, results, matched_invoices):
     ws_summary.cell(summary_row, 7, f"{overall_recall:.2f}")
     ws_summary.cell(summary_row, 8, f"{overall_f1:.2f}")
 
-    # Add note about over-extraction
+    # Add comprehensive notes about color coding
     note_row = summary_row + 2
-    ws_summary.cell(note_row, 1, "NOTE:").font = Font(bold=True, italic=True)
+    ws_summary.cell(note_row, 1, "COLOR LEGEND (Field Comparison Sheet):").font = Font(
+        bold=True, italic=True
+    )
+
+    # Create color legend with actual colors
+    legend_items = [
+        ("🟢 GREEN", "Exact match", match_fill),
+        (
+            "🟡 LIGHT GREEN",
+            "Numeric match (different format, e.g., '1000' vs '1,000')",
+            numeric_match_fill,
+        ),
+        (
+            "🔵 LIGHT BLUE",
+            "Zero-equivalent match ('' vs '0' or '0.0')",
+            zero_match_fill,
+        ),
+        (
+            "🟠 LIGHT ORANGE",
+            "Fuzzy match (company name variations, tax format)",
+            fuzzy_match_fill,
+        ),
+        (
+            "🟠 ORANGE (Full Row)",
+            "Over-extraction (Model has more rows than GT)",
+            over_extraction_fill,
+        ),
+        ("🔴 RED", "Mismatch / Error", mismatch_fill),
+        ("🟡 YELLOW", "Calculated GT field (not in original GT)", calculated_fill),
+    ]
+
+    current_row = note_row + 1
+    for label, description, fill_color in legend_items:
+        # Column A: Color label
+        cell_label = ws_summary.cell(current_row, 1, label)
+        cell_label.font = Font(bold=True, size=9)
+
+        # Column B-D: Description
+        cell_desc = ws_summary.cell(current_row, 2, description)
+        cell_desc.font = Font(size=9)
+
+        # Column E: Color sample
+        cell_sample = ws_summary.cell(current_row, 5, "Sample")
+        cell_sample.fill = fill_color
+        cell_sample.font = Font(size=9)
+
+        current_row += 1
+
+    # Add note about over-extraction metrics
+    current_row += 1
+    ws_summary.cell(current_row, 1, "NOTE:").font = Font(bold=True, italic=True)
     ws_summary.cell(
-        note_row + 1,
+        current_row + 1, 1, "• Over-extraction rows are INCLUDED in the above metrics."
+    )
+    ws_summary.cell(
+        current_row + 2,
         1,
-        "Over-extraction rows (Model has more rows than GT for same invoice)",
+        "• See 'Accuracy (Excl Over-Extraction)' sheet for cleaner metrics.",
     )
     ws_summary.cell(
-        note_row + 2, 1, "are highlighted in ORANGE in Field Comparison sheet."
+        current_row + 3,
+        1,
+        "• Orange rows in Field Comparison show where Model extracted more data than GT.",
     )
-    ws_summary.cell(note_row + 3, 1, "These rows are INCLUDED in the above metrics.")
 
     ws_summary.column_dimensions["A"].width = 25
     for col in ["B", "C", "D", "E", "F", "G", "H"]:
