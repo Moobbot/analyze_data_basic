@@ -2,7 +2,7 @@
   "schema_name": "Trade Information (I.1)",
   "description": "Schema for trade/transaction data including buy, sell, and related operations",
   "fields": {
-    "Transaction Type": {
+    "Transaction type": {
       "type": "text",
       "required": true,
       "allowed_values": [
