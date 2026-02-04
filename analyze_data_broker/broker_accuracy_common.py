@@ -170,6 +170,35 @@ def normalize_transaction_type(trans_type):
     return variations.get(normalized, normalized)
 
 
+def normalize_company_name(name):
+    """Normalize company name for fuzzy matching"""
+    if pd.isna(name) or str(name).strip() == "":
+        return ""
+
+    name = str(name).strip().lower()
+
+    # Common abbreviations mapping
+    replacements = {
+        r"\bltd\.?\b": "limited",
+        r"\bpte\.?\b": "private",
+        r"\bco\.?\b": "company",
+        r"\bcorp\.?\b": "corporation",
+        r"\binc\.?\b": "incorporated",
+        r"\bllc\.?\b": "limited liability company",
+        r"\bllp\.?\b": "limited liability partnership",
+        r"\bs\.?a\.?\b": "sociedad anonima",
+        r"\bspc\.?\b": "segregated portfolio company",
+    }
+
+    for pattern, replacement in replacements.items():
+        name = re.sub(pattern, replacement, name)
+
+    # Remove extra spaces
+    name = re.sub(r"\s+", " ", name).strip()
+
+    return name
+
+
 def are_values_equivalent(val1, val2, field_name=None):
     """
     Check if two values are equivalent
@@ -190,8 +219,8 @@ def are_values_equivalent(val1, val2, field_name=None):
         if s == "":
             return True
         try:
-            num = float(s.replace(",", ""))
-            return num == 0.0 or num == -0.0
+            num = float(s.replace(",", "").replace("-", ""))
+            return num == 0.0
         except (ValueError, TypeError):
             return False
 
@@ -204,6 +233,15 @@ def are_values_equivalent(val1, val2, field_name=None):
         if str1 != str2:
             return True, "zero_equivalent"
         return True, "exact"
+
+    # Fuzzy matching for Client Name
+    if field_name and "Client name" in field_name:
+        norm1 = normalize_company_name(val1)
+        norm2 = normalize_company_name(val2)
+        if norm1 == norm2:
+            if str1.lower() != str2.lower():
+                return True, "fuzzy"
+            return True, "exact"
 
     # Exact match
     if str1 == str2:

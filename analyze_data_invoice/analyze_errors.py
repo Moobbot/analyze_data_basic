@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Script to analyze error patterns in invoice extraction
+Generates markdown report
 """
 
 import pandas as pd
@@ -16,16 +17,24 @@ from calculate_accuracy_test100 import load_model_output as load_model_100
 from calculate_accuracy_test100_multipage import load_ground_truth as load_gt_multi
 from calculate_accuracy_test100_multipage import load_model_output as load_model_multi
 
+# Paths
+BASE_DIR = Path(__file__).parent
+OUTPUT_FILE = BASE_DIR / "danh_gia_ket_qua" / "2026_02_04" / "report_analysis_error.md"
+
 
 def analyze_dataset(name, gt_df, model_df):
-    print(f"\n{'='*20} ANALYZING: {name} {'='*20}")
+    """Analyze dataset and return report lines"""
+    report = []
+    report.append(f"## {name}")
+    report.append("")
 
     # Match invoices
     gt_invoices = set(gt_df["invoice_name_normalized"].unique())
     model_invoices = set(model_df["invoice_name_normalized"].unique())
     matched_invoices = sorted(list(gt_invoices & model_invoices))
 
-    print(f"Total Matched Invoices: {len(matched_invoices)}")
+    report.append(f"- **Total Matched Invoices:** {len(matched_invoices)}")
+    report.append("")
 
     # Store errors
     field_errors = {
@@ -44,8 +53,6 @@ def analyze_dataset(name, gt_df, model_df):
         gt_rows = gt_df[gt_df["invoice_name_normalized"] == invoice_name]
         model_rows = model_df[model_df["invoice_name_normalized"] == invoice_name]
 
-        # We need to match rows. For now, simple assumption: 1-to-1 or max-to-max matching order
-        # This is a simplification but useful for error analysis
         max_rows = max(len(gt_rows), len(model_rows))
 
         for i in range(max_rows):
@@ -85,11 +92,9 @@ def analyze_dataset(name, gt_df, model_df):
                             {"invoice": invoice_name, "gt": gt_str, "model": model_str}
                         )
 
-    # Print Report
-    print(
-        f"\n{'Field':<25} | {'Error %':<8} | {'Empty(Model)':<12} | {'Mismatch':<10} | {'Empty(GT)':<10}"
-    )
-    print("-" * 80)
+    # Generate Tables
+    report.append("| Field | Error % | Empty(Model) | Mismatch | Empty(GT) |")
+    report.append("| :--- | :--- | :--- | :--- | :--- |")
 
     sorted_fields = sorted(
         field_errors.items(), key=lambda x: x[1]["cnt"], reverse=True
@@ -99,30 +104,72 @@ def analyze_dataset(name, gt_df, model_df):
         if stats["total"] == 0:
             continue
         err_rate = (stats["cnt"] / stats["total"]) * 100
-        print(
-            f"{field:<25} | {err_rate:6.1f}% | {stats['model_empty']:<12} | {stats['value_mismatch']:<10} | {stats['gt_empty']:<10}"
+        report.append(
+            f"| {field} | {err_rate:.1f}% | {stats['model_empty']} | {stats['value_mismatch']} | {stats['gt_empty']} |"
         )
 
-    print("\n--- TOP ERROR EXAMPLES ---")
+    report.append("")
+    report.append("### Top Error Examples")
+    report.append("")
+
     for field, stats in sorted_fields[:5]:  # Top 5 problematic fields
         if stats["cnt"] == 0:
             continue
-        print(f"\n[ {field} ] Errors: {stats['cnt']}")
+        report.append(f"#### {field} (Errors: {stats['cnt']})")
+
         for ex in error_examples[field]:
-            print(f"  {ex['invoice']}: GT='{ex['gt']}' vs Model='{ex['model']}'")
+            # Format nicely
+            gt_disp = ex["gt"].replace("\n", " ").strip()
+            model_disp = ex["model"].replace("\n", " ").strip()
+            if len(gt_disp) > 50:
+                gt_disp = gt_disp[:47] + "..."
+            if len(model_disp) > 50:
+                model_disp = model_disp[:47] + "..."
+
+            report.append(f"- **{ex['invoice']}**")
+            report.append(f"  - GT: `{gt_disp}`")
+            report.append(f"  - Model: `{model_disp}`")
+        report.append("")
+
+    return report
 
 
 def main():
     print("Loading data...")
     gt_100 = load_gt_100()
     model_100 = load_model_100()
-
-    analyze_dataset("TEST-SET-100 (Single Page)", gt_100, model_100)
-
-    # Uncomment to analyze multipage as well
     gt_multi = load_gt_multi()
     model_multi = load_model_multi()
-    analyze_dataset("TEST-SET-100-MULTIPAGE", gt_multi, model_multi)
+
+    print("Analyzing and generating report...")
+
+    report_lines = []
+    report_lines.append("# Invoice Error Analysis Report")
+    report_lines.append("")
+    report_lines.append("**Cập nhật:** 2026-02-04")
+    report_lines.append("")
+    report_lines.append("---")
+    report_lines.append("")
+
+    # Analyze Single Page
+    report_lines.extend(
+        analyze_dataset("TEST-SET-100 (Single Page)", gt_100, model_100)
+    )
+
+    report_lines.append("---")
+    report_lines.append("")
+
+    # Analyze Multipage
+    report_lines.extend(
+        analyze_dataset("TEST-SET-100-MULTIPAGE", gt_multi, model_multi)
+    )
+
+    # Write to file
+    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        f.write("\n".join(report_lines))
+
+    print(f"✓ Report saved to: {OUTPUT_FILE}")
 
 
 if __name__ == "__main__":

@@ -61,7 +61,16 @@ def normalize_value(value):
     except (ValueError, TypeError):
         # Not a number, treat as string
         value_str = value_str.replace(",", "")
-        return value_str.lower()
+
+        # Normalize whitespace around common separators (hyphens, slashes, etc.)
+        # This handles cases like "12- MAR-2025" vs "12-MAR-2025"
+        value_str = re.sub(r"\s*-\s*", "-", value_str)  # Normalize hyphens
+        value_str = re.sub(r"\s*/\s*", "/", value_str)  # Normalize slashes
+        value_str = re.sub(
+            r"\s+", " ", value_str
+        )  # Normalize multiple spaces to single space
+
+        return value_str.strip().lower()
 
 
 def normalize_company_name(name):

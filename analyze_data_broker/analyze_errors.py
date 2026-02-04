@@ -1,338 +1,248 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Analyze errors from broker accuracy Excel reports
-Generate detailed error analysis report
+Detailed error analysis for Broker Extraction
+Comparisons are made row-by-row on raw data
+Generates Markdown report
 """
 
 import pandas as pd
+import importlib.util
 from pathlib import Path
-from openpyxl import load_workbook
-from collections import defaultdict
+import sys
 
+# Add parent directory to path
 BASE_DIR = Path(__file__).parent
-REPORT_DIR = BASE_DIR / "danh_gia_ket_qua" / "2026_02_04"
-OUTPUT_FILE = BASE_DIR / "report_analysis_error.md"
+sys.path.insert(0, str(BASE_DIR))
 
-REPORTS = [
-    ("Contract Note", "accuracy_report_contract_note.xlsx"),
-    ("Dividend Advice", "accuracy_report_dividend.xlsx"),
-    ("FX Trade", "accuracy_report_fx_trade.xlsx"),
-    ("Interest Payment", "accuracy_report_interest_payment.xlsx"),
-    ("Trade Confirmation", "accuracy_report_trade_confirmation.xlsx"),
+from broker_accuracy_common import (
+    are_values_equivalent,
+    CONTRACT_NOTE_FIELDS,
+    DIVIDEND_FIELDS,
+    FX_TRADE_FIELDS,
+    INTEREST_PAYMENT_FIELDS,
+    TRADE_CONFIRMATION_FIELDS,
+)
+
+# Output Path
+OUTPUT_FILE = BASE_DIR / "danh_gia_ket_qua" / "2026_02_04" / "broker_error_report.md"
+
+# Configuration for each document type
+DOC_TYPES = [
+    {
+        "name": "Contract Note",
+        "script": "calculate_accuracy_contract_note.py",
+        "fields": CONTRACT_NOTE_FIELDS,
+    },
+    {
+        "name": "Dividend Advice",
+        "script": "calculate_accuracy_dividend.py",
+        "fields": DIVIDEND_FIELDS,
+    },
+    {
+        "name": "FX Trade",
+        "script": "calculate_accuracy_fx_trade.py",
+        "fields": FX_TRADE_FIELDS,
+    },
+    {
+        "name": "Interest Payment",
+        "script": "calculate_accuracy_interest.py",
+        "fields": INTEREST_PAYMENT_FIELDS,
+    },
+    {
+        "name": "Trade Confirmation",
+        "script": "calculate_accuracy_trade_conf.py",
+        "fields": TRADE_CONFIRMATION_FIELDS,
+    },
 ]
 
 
-def analyze_excel_report(excel_file):
-    """Analyze errors from Excel report"""
-    wb = load_workbook(excel_file, data_only=True)
-    ws_summary = wb["Accuracy Summary"]
-    ws_compare = wb["Field Comparison"]
+def load_module(script_name):
+    """Dynamically load module from file path"""
+    file_path = BASE_DIR / script_name
+    spec = importlib.util.spec_from_file_location("module", file_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["module"] = module
+    spec.loader.exec_module(module)
+    return module
 
-    # Read summary metrics
-    field_metrics = []
-    for row_idx in range(2, ws_summary.max_row + 1):
-        field = ws_summary.cell(row_idx, 1).value
-        if not field or "OVERALL" in str(field):
-            break
 
-        total_gt = ws_summary.cell(row_idx, 2).value or 0
-        total_model = ws_summary.cell(row_idx, 3).value or 0
-        correct = ws_summary.cell(row_idx, 4).value or 0
-        accuracy = ws_summary.cell(row_idx, 5).value
+def analyze_dataset(name, gt_df, model_df, fields):
+    """Analyze dataset and return report lines"""
+    report = []
+    report.append(f"## {name}")
+    report.append("")
 
-        if isinstance(accuracy, str):
-            accuracy = float(accuracy.replace("%", ""))
+    # Match documents
+    gt_files = set(gt_df["_filename_normalized"].unique())
+    model_files = set(model_df["_filename_normalized"].unique())
+    matched_files = sorted(list(gt_files & model_files))
 
-        error_count = total_gt - correct
-        error_rate = (error_count / total_gt * 100) if total_gt > 0 else 0
+    report.append(f"- **Total Matched Files:** {len(matched_files)}")
+    report.append("")
 
-        field_metrics.append(
-            {
-                "field": field,
-                "total_gt": int(total_gt),
-                "correct": int(correct),
-                "errors": int(error_count),
-                "error_rate": float(error_rate),
-                "accuracy": float(accuracy),
-            }
-        )
-
-    # Read overall metrics
-    overall_metrics = None
-    for row_idx in range(1, ws_summary.max_row + 1):
-        cell_value = ws_summary.cell(row_idx, 1).value
-        if cell_value and "OVERALL SUMMARY" in str(cell_value):
-            overall_metrics = {
-                "total_gt": ws_summary.cell(row_idx, 2).value or 0,
-                "total_model": ws_summary.cell(row_idx, 3).value or 0,
-                "correct": ws_summary.cell(row_idx, 4).value or 0,
-                "accuracy": ws_summary.cell(row_idx, 5).value,
-                "precision": ws_summary.cell(row_idx, 6).value,
-                "recall": ws_summary.cell(row_idx, 7).value,
-                "f1_score": ws_summary.cell(row_idx, 8).value,
-            }
-            break
-
-    return {
-        "field_metrics": field_metrics,
-        "overall_metrics": overall_metrics,
+    # Store errors
+    field_errors = {
+        field: {
+            "total": 0,
+            "cnt": 0,
+            "model_empty": 0,
+            "gt_empty": 0,
+            "value_mismatch": 0,
+        }
+        for field in fields
     }
+    error_examples = {field: [] for field in fields}
 
+    for filename in matched_files:
+        gt_rows = gt_df[gt_df["_filename_normalized"] == filename]
+        model_rows = model_df[model_df["_filename_normalized"] == filename]
 
-def generate_report():
-    """Generate error analysis report"""
-    print("Analyzing broker accuracy reports...")
+        max_rows = max(len(gt_rows), len(model_rows))
 
-    all_results = {}
+        for i in range(max_rows):
+            gt_row = gt_rows.iloc[i].to_dict() if i < len(gt_rows) else {}
+            model_row = model_rows.iloc[i].to_dict() if i < len(model_rows) else {}
 
-    for doc_type, report_file in REPORTS:
-        report_path = REPORT_DIR / report_file
+            for field in fields:
+                field_errors[field]["total"] += 1
 
-        if not report_path.exists():
-            print(f"  Warning: {report_file} not found")
-            continue
+                gt_val = gt_row.get(field) if gt_row else ""
+                model_val = model_row.get(field) if model_row else ""
 
-        print(f"  Analyzing: {doc_type}")
-        all_results[doc_type] = analyze_excel_report(report_path)
+                is_match, match_type = are_values_equivalent(gt_val, model_val, field)
 
-    # Generate markdown report
-    lines = []
-    lines.append("# Phân Tích Lỗi & Nguyên Nhân (Broker Data Accuracy Analysis)")
-    lines.append("")
-    lines.append("**Cập nhật:** 2026-02-04")
-    lines.append("")
+                if not is_match:
+                    field_errors[field]["cnt"] += 1
 
-    # 1. Overall Summary
-    lines.append("## 1. Tổng Quan Kết Quả")
-    lines.append("")
-    lines.append(
-        "| Document Type | Accuracy | Precision | Recall | F1-Score | Files | Nhận Xét |"
+                    gt_str = str(gt_val).strip() if pd.notna(gt_val) else ""
+                    model_str = str(model_val).strip() if pd.notna(model_val) else ""
+
+                    if model_str == "" and gt_str != "":
+                        field_errors[field]["model_empty"] += 1
+                    elif gt_str == "" and model_str != "":
+                        field_errors[field]["gt_empty"] += 1
+                    else:
+                        field_errors[field]["value_mismatch"] += 1
+
+                    # Save examples (max 5 per field)
+                    if len(error_examples[field]) < 5:
+                        error_examples[field].append(
+                            {"file": filename, "gt": gt_str, "model": model_str}
+                        )
+
+    # Generate Tables
+    report.append("| Field | Error % | Empty(Model) | Mismatch | Empty(GT) |")
+    report.append("| :--- | :--- | :--- | :--- | :--- |")
+
+    sorted_fields = sorted(
+        field_errors.items(), key=lambda x: x[1]["cnt"], reverse=True
     )
-    lines.append(
-        "| :------------ | :------- | :-------- | :----- | :------- | :---- | :------- |"
-    )
 
-    for doc_type in [
-        "Contract Note",
-        "Dividend Advice",
-        "FX Trade",
-        "Interest Payment",
-        "Trade Confirmation",
-    ]:
-        if doc_type not in all_results:
+    for field, stats in sorted_fields:
+        if stats["total"] == 0:
             continue
-
-        metrics = all_results[doc_type]["overall_metrics"]
-        if not metrics:
-            continue
-
-        acc = metrics["accuracy"]
-        prec = metrics["precision"]
-        rec = metrics["recall"]
-        f1 = metrics["f1_score"]
-        files = metrics["total_gt"]
-
-        # Convert to float if string
-        if isinstance(acc, str):
-            acc = float(acc.replace("%", ""))
-        else:
-            acc = float(acc)
-        if isinstance(prec, str):
-            prec = float(prec.replace("%", ""))
-        else:
-            prec = float(prec)
-        if isinstance(rec, str):
-            rec = float(rec.replace("%", ""))
-        else:
-            rec = float(rec)
-        if isinstance(f1, str):
-            f1 = float(f1.replace("%", ""))
-        else:
-            f1 = float(f1)
-
-        # Determine status
-        if acc >= 95:
-            status = "🟢 Excellent"
-        elif acc >= 90:
-            status = "✅ Very Good"
-        elif acc >= 80:
-            status = "🟡 Good"
-        else:
-            status = "🔴 Needs Improvement"
-
-        lines.append(
-            f"| **{doc_type}** | **{acc:.2f}%** | **{prec:.2f}%** | **{rec:.2f}%** | **{f1:.2f}%** | {files} | {status} |"
+        err_rate = (stats["cnt"] / stats["total"]) * 100
+        report.append(
+            f"| {field} | {err_rate:.1f}% | {stats['model_empty']} | {stats['value_mismatch']} | {stats['gt_empty']} |"
         )
 
-    lines.append("")
-    lines.append("---")
-    lines.append("")
+    report.append("")
+    report.append("### Top Error Examples")
+    report.append("")
 
-    # 2. Field-level analysis for each document type
-    lines.append("## 2. Phân Tích Chi Tiết Theo Field")
-    lines.append("")
-
-    for doc_type in [
-        "Contract Note",
-        "Dividend Advice",
-        "FX Trade",
-        "Interest Payment",
-        "Trade Confirmation",
-    ]:
-        if doc_type not in all_results:
+    for field, stats in sorted_fields[:5]:  # Top 5 problematic fields
+        if stats["cnt"] == 0:
             continue
+        report.append(f"#### {field} (Errors: {stats['cnt']})")
 
-        field_metrics = all_results[doc_type]["field_metrics"]
-        if not field_metrics:
-            continue
+        for ex in error_examples[field]:
+            # Format nicely
+            gt_disp = ex["gt"].replace("\n", " ").strip()
+            model_disp = ex["model"].replace("\n", " ").strip()
+            if len(gt_disp) > 50:
+                gt_disp = gt_disp[:47] + "..."
+            if len(model_disp) > 50:
+                model_disp = model_disp[:47] + "..."
 
-        # Sort by error rate descending
-        sorted_fields = sorted(
-            field_metrics, key=lambda x: x["error_rate"], reverse=True
-        )
+            report.append(f"- **{ex['file']}**")
+            report.append(f"  - GT: `{gt_disp}`")
+            report.append(f"  - Model: `{model_disp}`")
+        report.append("")
 
-        lines.append(f"### {doc_type.upper()}")
-        lines.append("")
-        lines.append("| Field | Error % | Total | Correct | Errors | Nhận Xét |")
-        lines.append("| :---- | :------ | :---- | :------ | :----- | :------- |")
+    report.append("---")
+    report.append("")
 
-        for field_data in sorted_fields:
-            field = field_data["field"]
-            error_rate = field_data["error_rate"]
-            total = field_data["total_gt"]
-            correct = field_data["correct"]
-            errors = field_data["errors"]
+    return report
 
-            # Determine status
-            if error_rate >= 30:
-                status = "🔴 High error rate"
-            elif error_rate >= 15:
-                status = "🟡 Moderate errors"
-            elif error_rate >= 5:
-                status = "🟢 Acceptable"
-            else:
-                status = "🟢 Excellent"
 
-            lines.append(
-                f"| **{field}** | {error_rate:.1f}% | {total} | {correct} | {errors} | {status} |"
-            )
+def main():
+    print("STARTING DETAILED ERROR ANALYSIS...")
 
-        lines.append("")
+    report_lines = []
+    report_lines.append("# Broker Error Analysis Report")
+    report_lines.append("")
+    report_lines.append("**Cập nhật:** 2026-02-04")
+    report_lines.append("")
+    report_lines.append("---")
+    report_lines.append("")
 
-    lines.append("---")
-    lines.append("")
+    for doc_config in DOC_TYPES:
+        name = doc_config["name"]
+        script = doc_config["script"]
+        fields = doc_config["fields"]
 
-    # 3. Key Findings
-    lines.append("## 3. Phát Hiện Chính")
-    lines.append("")
+        try:
+            print(f"\nLoading module: {script}")
+            module = load_module(script)
 
-    # Find worst performing document types
-    lines.append("### A. Document Types Cần Cải Thiện")
-    lines.append("")
+            # Helper to find load function
+            def get_data(module):
+                # Try generic names
+                if hasattr(module, "load_ground_truth"):
+                    gt = module.load_ground_truth()
+                elif hasattr(module, "load_gt"):
+                    gt = module.load_gt()
+                else:
+                    raise AttributeError("Cannot find load_ground_truth function")
 
-    doc_accuracies = []
-    for doc_type in all_results:
-        metrics = all_results[doc_type]["overall_metrics"]
-        if metrics:
-            acc = metrics["accuracy"]
-            if isinstance(acc, str):
-                acc = float(acc.replace("%", ""))
-            doc_accuracies.append((doc_type, acc))
+                if hasattr(module, "load_model_output"):
+                    model = module.load_model_output()
+                elif hasattr(module, "load_model"):
+                    model = module.load_model()
+                else:
+                    raise AttributeError("Cannot find load_model_output function")
+                return gt, model
 
-    doc_accuracies.sort(key=lambda x: x[1])
+            gt_df, model_df = get_data(module)
 
-    for doc_type, acc in doc_accuracies:
-        if acc < 80:
-            lines.append(f"**{doc_type}: {acc:.2f}%**")
-            lines.append("")
+            if gt_df.empty or model_df.empty:
+                print(f"Skipping {name} due to empty data")
+                continue
 
-            # Show top error fields
-            field_metrics = all_results[doc_type]["field_metrics"]
-            top_errors = sorted(
-                field_metrics, key=lambda x: x["error_rate"], reverse=True
-            )[:5]
+            # Apply column mapping if needed (Contract Note has different column names)
+            if name == "Contract Note":
+                column_mapping = {
+                    "Transaction Type": "Transaction type",
+                    "Trade Date": "Trade date",
+                    "Settlement Date": "Settlement date",
+                }
+                model_df = model_df.rename(columns=column_mapping)
 
-            lines.append("Top error fields:")
-            for field_data in top_errors:
-                lines.append(
-                    f"- **{field_data['field']}**: {field_data['error_rate']:.1f}% error rate ({field_data['errors']} errors)"
-                )
-            lines.append("")
+            report_lines.extend(analyze_dataset(name, gt_df, model_df, fields))
 
-    lines.append("### B. Fields Có Lỗi Cao Nhất")
-    lines.append("")
+        except Exception as e:
+            print(f"Failed to analyze {name}: {e}")
+            import traceback
 
-    # Collect all fields across document types
-    all_field_errors = []
-    for doc_type in all_results:
-        field_metrics = all_results[doc_type]["field_metrics"]
-        for field_data in field_metrics:
-            if field_data["error_rate"] >= 20:
-                all_field_errors.append(
-                    {
-                        "doc_type": doc_type,
-                        "field": field_data["field"],
-                        "error_rate": field_data["error_rate"],
-                        "errors": field_data["errors"],
-                    }
-                )
-
-    all_field_errors.sort(key=lambda x: x["error_rate"], reverse=True)
-
-    for item in all_field_errors[:10]:
-        lines.append(
-            f"- **{item['doc_type']} - {item['field']}**: {item['error_rate']:.1f}% ({item['errors']} errors)"
-        )
-
-    lines.append("")
-    lines.append("---")
-    lines.append("")
-
-    # 4. Recommendations
-    lines.append("## 4. Khuyến Nghị")
-    lines.append("")
-    lines.append("### Ưu Tiên Cao")
-    lines.append("")
-
-    for doc_type, acc in doc_accuracies:
-        if acc < 80:
-            lines.append(f"1. **Cải thiện {doc_type}** (hiện tại {acc:.2f}%)")
-            lines.append("   - Review Excel report để xác định pattern lỗi")
-            lines.append("   - Kiểm tra GT data quality")
-            lines.append("   - Cải thiện model extraction logic")
-            lines.append("")
-
-    lines.append("### Ưu Tiên Trung Bình")
-    lines.append("")
-    lines.append("1. **Thêm fuzzy matching** cho các fields có variation:")
-    lines.append("   - Company names")
-    lines.append("   - Security names")
-    lines.append("   - Account numbers")
-    lines.append("")
-    lines.append("2. **Chuẩn hóa date formats** để tránh format mismatch")
-    lines.append("")
-    lines.append("3. **Improve numeric parsing** cho amount fields")
-    lines.append("")
-
-    lines.append("---")
-    lines.append("")
-    lines.append("## 5. Next Steps")
-    lines.append("")
-    lines.append("1. Review Excel reports chi tiết cho từng document type")
-    lines.append("2. Identify specific error patterns")
-    lines.append("3. Update GT data nếu cần")
-    lines.append("4. Improve model prompts/logic")
-    lines.append("5. Re-run evaluation và so sánh kết quả")
-    lines.append("")
+            traceback.print_exc()
 
     # Write to file
+    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
+        f.write("\n".join(report_lines))
 
-    print(f"\nReport generated: {OUTPUT_FILE}")
-    print(f"Total document types analyzed: {len(all_results)}")
+    print(f"\n✓ Report saved to: {OUTPUT_FILE}")
 
 
 if __name__ == "__main__":
-    generate_report()
+    main()
