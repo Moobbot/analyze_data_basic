@@ -19,13 +19,13 @@
       ],
       "description": "Type of transaction - validated against keywords in text"
     },
-    "Trade Date": {
+    "Trade date": {
       "type": "date",
       "format": "MM/DD/YYYY",
       "required": true,
       "description": "Date when the trade was executed - validated in text"
     },
-    "Settlement Date": {
+    "Settlement date": {
       "type": "date",
       "format": "MM/DD/YYYY",
       "required": true,

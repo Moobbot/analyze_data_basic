@@ -87,9 +87,9 @@ def validate_file(json_path):
         result_log = {
             "File": os.path.basename(json_path),
             "Text Status": "N/A",
-            "Transaction Type": "N/A",
-            "Trade Date": "N/A",
-            "Settlement Date": "N/A",
+            "Transaction type": "N/A",
+            "Trade date": "N/A",
+            "Settlement date": "N/A",
             "ISIN Status": "N/A",
             "Generic Errors": [],
             "Error": "",
@@ -110,9 +110,9 @@ def validate_file(json_path):
         validation_logic.check_transaction_type(data, text_content, result_log)
 
         # --- STEP 2: Verify Dates ---
-        validation_logic.check_date_field("Trade Date", data, text_content, result_log)
+        validation_logic.check_date_field("Trade date", data, text_content, result_log)
         validation_logic.check_date_field(
-            "Settlement Date", data, text_content, result_log
+            "Settlement date", data, text_content, result_log
         )
 
         # --- STEP 3: Verify ISIN ---
@@ -167,26 +167,26 @@ def generate_report(results, report_path):
     text_empty = sum(1 for r in results if r.get("Text Status") == "EMPTY")
 
     # Transaction Type Stats
-    trans_pass = sum(1 for r in results if r.get("Transaction Type") == "PASS")
+    trans_pass = sum(1 for r in results if r.get("Transaction type") == "PASS")
     trans_fail = sum(
-        1 for r in results if str(r.get("Transaction Type")).startswith("FAIL")
+        1 for r in results if str(r.get("Transaction type")).startswith("FAIL")
     )
     trans_warn = sum(
-        1 for r in results if str(r.get("Transaction Type")).startswith("WARN")
+        1 for r in results if str(r.get("Transaction type")).startswith("WARN")
     )
 
     # Trade Date Stats
-    trade_pass = sum(1 for r in results if r.get("Trade Date") == "PASS")
-    trade_warn = sum(1 for r in results if str(r.get("Trade Date")).startswith("WARN"))
-    trade_fail = sum(1 for r in results if str(r.get("Trade Date")).startswith("FAIL"))
+    trade_pass = sum(1 for r in results if r.get("Trade date") == "PASS")
+    trade_warn = sum(1 for r in results if str(r.get("Trade date")).startswith("WARN"))
+    trade_fail = sum(1 for r in results if str(r.get("Trade date")).startswith("FAIL"))
 
     # Settlement Date Stats
-    settle_pass = sum(1 for r in results if r.get("Settlement Date") == "PASS")
+    settle_pass = sum(1 for r in results if r.get("Settlement date") == "PASS")
     settle_warn = sum(
-        1 for r in results if str(r.get("Settlement Date")).startswith("WARN")
+        1 for r in results if str(r.get("Settlement date")).startswith("WARN")
     )
     settle_fail = sum(
-        1 for r in results if str(r.get("Settlement Date")).startswith("FAIL")
+        1 for r in results if str(r.get("Settlement date")).startswith("FAIL")
     )
 
     # ISIN Stats
@@ -292,8 +292,8 @@ def copy_ambiguous_date_files(results, input_folder, output_dir):
     # Find files with ambiguous date warnings
     ambiguous_files = []
     for r in results:
-        trade_date = r.get("Trade Date", "")
-        settlement_date = r.get("Settlement Date", "")
+        trade_date = r.get("Trade date", "")
+        settlement_date = r.get("Settlement date", "")
 
         if "WARN: Ambiguous Date Format" in str(
             trade_date
@@ -386,13 +386,13 @@ def process_folder(input_folder, output_csv, output_report=None):
         fieldnames = [
             "File",
             "Text Status",
-            "Transaction Type",
+            "Transaction type",
             "Transaction Type (JSON)",
             "Transaction Type (Text)",
-            "Trade Date",
+            "Trade date",
             "Trade Date (JSON)",
             "Trade Date (Text)",
-            "Settlement Date",
+            "Settlement date",
             "Settlement Date (JSON)",
             "Settlement Date (Text)",
             "ISIN Status",

@@ -4,7 +4,7 @@
 # 1. CONSTANTS & CONFIGURATION
 # ==============================================================================
 
-# Define keywords for verifying "Transaction Type"
+# Define keywords for verifying "Transaction type"
 # Maps standard types "BUY" and "SELL" to list of possible valid values
 TRANSACTION_KEYWORDS = {
     "BUY": [
@@ -57,8 +57,8 @@ TRANSACTION_KEYWORDS = {
 # Define keywords for verifying Context of Date Fields
 # Used to check if the date found in JSON also appears near these words in text
 DATE_KEYWORDS = {
-    "Trade Date": ["trade date", "traded on", "booking date"],
-    "Settlement Date": [
+    "Trade date": ["trade date", "traded on", "booking date"],
+    "Settlement date": [
         "Value date",
         "Settlement due on",
         "Settlement date",

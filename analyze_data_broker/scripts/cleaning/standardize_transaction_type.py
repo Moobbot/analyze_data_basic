@@ -1,5 +1,5 @@
 """
-Script to standardize "Transaction Type" field in JSON files.
+Script to standardize "Transaction type" field in JSON files.
 Handles both JSON objects and arrays of objects.
 """
 
@@ -51,8 +51,8 @@ def process_item(item):
 
     # Check if anything needs to change
     if (old_value != new_value) or (field_name != "Transaction Type"):
-        # Remove old field if lowercase
-        if field_name == "Transaction type":
+        # Remove old field if
+        if field_name == "Transaction Type":
             del item[field_name]
 
         # Set with correct capitalization

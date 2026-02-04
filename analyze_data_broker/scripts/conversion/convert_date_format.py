@@ -119,7 +119,7 @@ def convert_dates_in_json_files(directory_path, backup=True):
                 return None, None
 
             # Convert Trade Date
-            trade_key, trade_val = get_key_value_case_insensitive(data, "Trade Date")
+            trade_key, trade_val = get_key_value_case_insensitive(data, "Trade date")
             if trade_key and trade_val is not None:
                 original = trade_val
                 converted = convert_date_to_mm_dd_yyyy(original)
@@ -131,7 +131,7 @@ def convert_dates_in_json_files(directory_path, backup=True):
 
             # Convert Settlement Date
             settlement_key, settlement_val = get_key_value_case_insensitive(
-                data, "Settlement Date"
+                data, "Settlement date"
             )
             if settlement_key and settlement_val is not None:
                 original = settlement_val

@@ -73,7 +73,7 @@ def analyze_date_formats(directory_path):
                 return None
 
             # Analyze Trade Date
-            trade_date = get_value_case_insensitive(data, "Trade Date")
+            trade_date = get_value_case_insensitive(data, "Trade date")
             if trade_date:
                 files_with_trade_date += 1
                 format_type = identify_date_format(trade_date)
@@ -84,7 +84,7 @@ def analyze_date_formats(directory_path):
                     trade_date_examples[format_type] = (filename, trade_date)
 
             # Analyze Settlement Date
-            settlement_date = get_value_case_insensitive(data, "Settlement Date")
+            settlement_date = get_value_case_insensitive(data, "Settlement date")
             if settlement_date:
                 files_with_settlement_date += 1
                 format_type = identify_date_format(settlement_date)

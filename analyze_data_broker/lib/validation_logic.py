@@ -238,14 +238,14 @@ def check_field_presence(field, data, text_content, result_log):
 
 def check_transaction_type(data, text_content, result_log):
     """Validates the 'Transaction Type' field against extracted text."""
-    field = "Transaction Type"
+    field = "Transaction type"
     val = data.get(field)
 
     # Log JSON value
     result_log["Transaction Type (JSON)"] = val or ""
 
     if not val:
-        result_log["Transaction Type"] = "MISSING"
+        result_log["Transaction type"] = "MISSING"
         result_log["Transaction Type (Text)"] = ""
         return
 
@@ -254,9 +254,9 @@ def check_transaction_type(data, text_content, result_log):
 
     if not keywords:
         if val_upper not in validation_config.TRANSACTION_KEYWORDS:
-            result_log["Transaction Type"] = f"WARN: Unknown Type '{val}'"
+            result_log["Transaction type"] = f"WARN: Unknown Type '{val}'"
         else:
-            result_log["Transaction Type"] = f"FAIL: No keywords for '{val}'"
+            result_log["Transaction type"] = f"FAIL: No keywords for '{val}'"
         return
 
     text_lower = utils.normalize_text(text_content)
@@ -270,7 +270,7 @@ def check_transaction_type(data, text_content, result_log):
             break
 
     if found:
-        result_log["Transaction Type"] = "PASS"
+        result_log["Transaction type"] = "PASS"
         result_log["Transaction Type (Text)"] = matched_kw
     else:
         # Expected keywords not found. Check if keywords for OTHER types exist.
@@ -292,10 +292,10 @@ def check_transaction_type(data, text_content, result_log):
                 break
 
         if found_other:
-            result_log["Transaction Type"] = f"FAIL: Found {other_type}"
+            result_log["Transaction type"] = f"FAIL: Found {other_type}"
             result_log["Transaction Type (Text)"] = other_kw
         else:
-            result_log["Transaction Type"] = f"FAIL: Keywords not found"
+            result_log["Transaction type"] = f"FAIL: Keywords not found"
             result_log["Transaction Type (Text)"] = ""
 
 

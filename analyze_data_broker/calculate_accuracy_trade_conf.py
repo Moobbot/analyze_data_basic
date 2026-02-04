@@ -39,6 +39,7 @@ def load_gt():
 
 def load_model():
     df = pd.read_csv(MODEL_CSV)
+    # No column mapping needed - CSV and GT both use lowercase
     df["_filename"] = df["_fileName"].apply(normalize_filename)
     df["_filename_normalized"] = df["_filename"].apply(normalize_filename)
     return df
