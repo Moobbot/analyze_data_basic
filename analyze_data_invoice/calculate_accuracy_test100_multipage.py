@@ -17,10 +17,20 @@ from accuracy_common import (
 
 # Đường dẫn
 BASE_DIR = Path(__file__).parent
-TEST_DIR = BASE_DIR / "test-2026-02-03"
-GROUND_TRUTH_CSV = BASE_DIR / "test-set-100-multipage-ground-truth.csv"
+TEST_DIR = BASE_DIR / "danh_gia_ket_qua" / "2026_02_04" / "test"
+GROUND_TRUTH_CSV = (
+    BASE_DIR
+    / "danh_gia_ket_qua"
+    / "2026_02_04"
+    / "test-set-100-multipage-ground-truth.csv"
+)
 MODEL_OUTPUT_CSV = TEST_DIR / "test-set-100-multipage-all.csv"
-OUTPUT_FILE = BASE_DIR / "accuracy_report_test-set-100-multipage.xlsx"
+OUTPUT_FILE = (
+    BASE_DIR
+    / "danh_gia_ket_qua"
+    / "2026_02_04"
+    / "accuracy_report_test-set-100-multipage.xlsx"
+)
 
 
 LABELS_DIR = BASE_DIR / "datasets" / "test-set-100-multipage" / "labels"

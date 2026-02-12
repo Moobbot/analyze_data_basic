@@ -12,10 +12,12 @@ from accuracy_common import normalize_invoice_name
 
 # Paths
 BASE_DIR = Path(__file__).parent
-TEST_DIR = BASE_DIR / "test-2026-02-03"
+TEST_DIR = BASE_DIR / "danh_gia_ket_qua" / "2026_02_04" / "test"
 LABELS_DIR = BASE_DIR / "datasets" / "test-set-100" / "labels"
 MODEL_OUTPUT_CSV = TEST_DIR / "test-set-100.csv"
-OUTPUT_FILE = BASE_DIR / "over_extraction_analysis.md"
+OUTPUT_FILE = (
+    BASE_DIR / "danh_gia_ket_qua" / "2026_02_04" / "over_extraction_analysis.md"
+)
 
 
 def load_ground_truth():
